@@ -30,7 +30,7 @@ func main() {
 	case "ping":
 		runPing(os.Args[2:])
 	case "traceroute":
-		fmt.Println("traceroute command - coming soon")
+		runTraceroute(os.Args[2:])
 	case "portscan":
 		runPortScan(os.Args[2:])
 	case "bench":
