@@ -9,10 +9,10 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 ## Features
 
 - **Ping** - Send ICMP echo requests to test network connectivity and measure latency
-- **Traceroute** - Trace the network path to a destination host
+- **Traceroute** - Trace the network path to a destination host with AS lookup
 - **Port Scanning** - Discover open ports and services on target hosts
 - **HTTP Benchmarking** - Performance test HTTP endpoints with detailed metrics
-- **Debug Proxy** - Local proxy server for debugging HTTP traffic
+- **Debug Proxy** - Local proxy server for debugging HTTP traffic (*Planned*)
 
 ## Why NNS?
 
@@ -53,7 +53,10 @@ nns portscan 192.168.1.1 --ports 80,443
 # Benchmark an API
 nns bench https://api.example.com --requests 1000
 
-# Start debugging proxy
+# Trace route to host
+nns traceroute google.com
+
+# Start debugging proxy (Coming Soon)
 nns proxy --port 8080
 ```
 
