@@ -4,7 +4,7 @@
   <img src="img/nns.png" alt="NNS Logo" width="200"/>
 </p>
 
-A powerful networking toolkit for sysadmins and developers, built exclusively with Go's standard library.
+A powerful networking toolkit for sysadmins and developers, built with Go's standard library and official sub-repositories.
 
 ## Features
 
