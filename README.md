@@ -12,7 +12,7 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 - **Traceroute** - Trace the network path to a destination host with AS lookup
 - **Port Scanning** - Discover open ports and services on target hosts
 - **HTTP Benchmarking** - Performance test HTTP endpoints with detailed metrics
-- **Debug Proxy** - Local proxy server for debugging HTTP traffic (*Planned*)
+- **Debug Proxy** - Local proxy server for debugging HTTP traffic
 
 ## Why NNS?
 
