@@ -2,9 +2,9 @@
 package ping
 
 import (
-	"math"
-	"sort"
 	"time"
+
+	"github.com/JedizLaPulga/NNS/internal/stats"
 )
 
 // Statistics holds comprehensive ping statistics and metrics.
@@ -65,7 +65,10 @@ func (s *Statistics) Calculate() {
 		return
 	}
 
-	// Average RTT
+	// Convert Durations to float64 (seconds) for stats package
+	vals := stats.DurationsToFloat(s.RTTs)
+
+	// Average RTT (we can do this without float conversion loop if we want, but stats package has Mean)
 	var sum time.Duration
 	for _, rtt := range s.RTTs {
 		sum += rtt
@@ -73,17 +76,17 @@ func (s *Statistics) Calculate() {
 	s.AvgRTT = sum / time.Duration(s.Received)
 
 	// Median RTT
-	s.MedianRTT = median(s.RTTs)
+	s.MedianRTT = time.Duration(stats.Median(vals) * float64(time.Second))
 
 	// Standard deviation
-	s.StdDev = stddev(s.RTTs, s.AvgRTT)
+	s.StdDev = time.Duration(stats.StdDev(vals) * float64(time.Second))
 
-	// Jitter
-	s.Jitter = jitter(s.RTTs)
+	// Jitter (local implementation best for duration slices)
+	s.Jitter = calculateJitter(s.RTTs)
 
 	// Percentiles
-	s.P95 = percentile(s.RTTs, 0.95)
-	s.P99 = percentile(s.RTTs, 0.99)
+	s.P95 = time.Duration(stats.Percentile(vals, 0.95) * float64(time.Second))
+	s.P99 = time.Duration(stats.Percentile(vals, 0.99) * float64(time.Second))
 }
 
 // Quality returns a quality rating based on packet loss, RTT, and jitter.
@@ -113,63 +116,8 @@ func (s *Statistics) Quality() string {
 	return "Poor"
 }
 
-// median calculates the median value from a slice of durations.
-func median(values []time.Duration) time.Duration {
-	if len(values) == 0 {
-		return 0
-	}
-
-	// Make a copy to avoid modifying original
-	sorted := make([]time.Duration, len(values))
-	copy(sorted, values)
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i] < sorted[j]
-	})
-
-	n := len(sorted)
-	if n%2 == 0 {
-		// Even number: average of two middle values
-		return (sorted[n/2-1] + sorted[n/2]) / 2
-	}
-	// Odd number: middle value
-	return sorted[n/2]
-}
-
-// percentile calculates the percentile value (p between 0.0 and 1.0).
-func percentile(values []time.Duration, p float64) time.Duration {
-	if len(values) == 0 {
-		return 0
-	}
-
-	// Make a copy to avoid modifying original
-	sorted := make([]time.Duration, len(values))
-	copy(sorted, values)
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i] < sorted[j]
-	})
-
-	index := int(math.Round(float64(len(sorted)-1) * p))
-	return sorted[index]
-}
-
-// stddev calculates standard deviation of durations.
-func stddev(values []time.Duration, mean time.Duration) time.Duration {
-	if len(values) == 0 {
-		return 0
-	}
-
-	var sumSquaredDiff float64
-	for _, v := range values {
-		diff := float64(v - mean)
-		sumSquaredDiff += diff * diff
-	}
-
-	variance := sumSquaredDiff / float64(len(values))
-	return time.Duration(math.Sqrt(variance))
-}
-
-// jitter calculates average jitter (variation between consecutive RTTs).
-func jitter(values []time.Duration) time.Duration {
+// calculateJitter computes average jitter locally to avoid float conversion overhead for diffs
+func calculateJitter(values []time.Duration) time.Duration {
 	if len(values) < 2 {
 		return 0
 	}
@@ -184,4 +132,11 @@ func jitter(values []time.Duration) time.Duration {
 	}
 
 	return sumDiff / time.Duration(len(values)-1)
+}
+
+// GenerateHistogram returns formatted histogram string using shared stats package
+func GenerateHistogram(rtts []time.Duration, width int) string {
+	vals := stats.DurationsToFloat(rtts)
+	// Use 'ms' unit, multiplier 1000
+	return stats.GenerateHistogram(vals, width, 1000.0, "ms")
 }
