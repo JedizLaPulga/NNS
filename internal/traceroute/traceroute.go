@@ -16,41 +16,33 @@ import (
 
 // Hop represents a single router/node in the path.
 type Hop struct {
-	TTL          int
-	IP           net.IP.String // Raw IP string
-	Hosts        []string      // Resolved hostnames
-	AS           string        // AS Number and Org (e.g., "AS15169 Google")
-	RTTs         []time.Duration
-	ReachedDest  bool
-	Timeout      bool
-	Error        error
+	TTL         int
+	IP          string
+	Hosts       []string
+	ASN         string // e.g. "AS15169"
+	Org         string // e.g. "Google LLC"
+	RTTs        []time.Duration
+	ReachedDest bool
+	Timeout     bool
+	ProbesSent  int
 }
 
-// Result holds the complete trace result.
-type Result struct {
-	Target    string
-	TargetIP  string
-	Hops      []*Hop
-	MaxHops   int
-	Method    string
-	StartTime time.Time
-	Duration  time.Duration
-}
-
-// Config for the tracer.
+// Config for the Tracer.
 type Config struct {
 	Target    string
 	MaxHops   int
-	Queries   int           // Probes per hop
-	Timeout   time.Duration // Timeout for whole trace or per-probe? Let's say per-probe/hop window.
-	Method    string        // "icmp" or "udp"
+	Queries   int // Probes per hop
+	Timeout   time.Duration
 	ResolveAS bool
 }
 
 // Tracer executes the traceroute.
 type Tracer struct {
-	cfg Config
-	id  int // Process ID for ICMP identifier
+	cfg       Config
+	pid       int
+	sentTimes map[int]time.Time // Seq -> SendTime
+	sentHost  map[int]int       // Seq -> TTL (Validation)
+	mu        sync.Mutex
 }
 
 // NewTracer creates a new Tracer.
@@ -64,228 +56,281 @@ func NewTracer(cfg Config) *Tracer {
 	if cfg.Timeout == 0 {
 		cfg.Timeout = 2 * time.Second
 	}
-	if cfg.Method == "" {
-		cfg.Method = "icmp"
-	}
-	
+
 	return &Tracer{
-		cfg: cfg,
-		id:  os.Getpid() & 0xffff,
+		cfg:       cfg,
+		pid:       os.Getpid() & 0xffff,
+		sentTimes: make(map[int]time.Time),
+		sentHost:  make(map[int]int),
 	}
 }
 
 // Run executes the trace.
-func (t *Tracer) Run(ctx context.Context, updateCallback func(*Hop)) (*Result, error) {
-	// Resolve target
+func (t *Tracer) Run(ctx context.Context, callback func(h *Hop)) error {
 	dstIP, err := net.ResolveIPAddr("ip4", t.cfg.Target)
 	if err != nil {
-		return nil, fmt.Errorf("resolve failed: %w", err)
+		return fmt.Errorf("resolve failed: %w", err)
 	}
 
-	res := &Result{
-		Target:    t.cfg.Target,
-		TargetIP:  dstIP.String(),
-		MaxHops:   t.cfg.MaxHops,
-		Method:    t.cfg.Method,
-		StartTime: time.Now(),
-		Hops:      make([]*Hop, t.cfg.MaxHops),
-	}
-
-	// Initialize Hops map
-	var mu sync.Mutex
-	hopsMap := make(map[int]*Hop) // Map TTL -> Hop
-	
-	for i := 1; i <= t.cfg.MaxHops; i++ {
-		h := &Hop{
-			TTL:     i,
-			RTTs:    make([]time.Duration, 0),
-		}
-		res.Hops[i-1] = h
-		hopsMap[i] = h
-	}
-
-	// Setup Listener
-	conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
+	c, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	if err != nil {
-		return nil, fmt.Errorf("listen failed (requires admin): %w", err)
+		return fmt.Errorf("listen failed (needs admin): %w", err)
 	}
-	defer conn.Close()
-	
-	// Wrap with ipv4 for TTL control (though for listening we just need Conn)
-	// For sending, we might need a separate ipv4.PacketConn if we were using UDP
-	// But `icmp.ListenPacket` returns a `PacketConn` we can cast/use.
-	
+	defer c.Close()
+
+	pconn := c.IPv4PacketConn()
+
+	// Pre-allocate Hops
+	hops := make([]*Hop, t.cfg.MaxHops)
+	for i := 0; i < t.cfg.MaxHops; i++ {
+		hops[i] = &Hop{TTL: i + 1, RTTs: make([]time.Duration, 0)}
+	}
+
+	// Receiver Channel
+	packets := make(chan *icmpMessage, 100)
+
 	// Start Receiver
-	done := make(chan struct{})
-	
 	go func() {
-		defer close(done)
 		buf := make([]byte, 1500)
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				// Read with deadline to allow checking context
-				conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-				n, peer, err := conn.ReadFrom(buf)
+				c.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				n, peer, err := c.ReadFrom(buf)
 				if err != nil {
-					if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-						continue // Check context and loop
-					}
-					return // True error
+					continue
 				}
 
-				// Parse ICMP message
 				m, err := icmp.ParseMessage(1, buf[:n])
 				if err != nil {
 					continue
 				}
 
-				// We need to match this reply to a specific Probe (TTL/Seq)
-				var ttl int
-				var rtt time.Duration
-				var reached bool
-				
-				recvTime := time.Now()
-
-				switch m.Type {
-				case ipv4.ICMPTypeTimeExceeded:
-					// Extract original packet to find Seq = TTL
-					body, ok := m.Body.(*icmp.TimeExceeded)
-					if !ok {
-						continue
-					}
-					// Inner IP header + 8 bytes of original payload
-					// We need to parse the inner IP header length to find ICMP payload
-					if len(body.Data) < 20+8 {
-						continue
-					}
-					// Assuming generic IHL=5 (20 bytes). 
-					// The original ICMP Echo header starts at byte 20 of body.Data associated with ipv4 header.
-					// Strictly, we should parse the inner IP header version/IHL.
-					ihl := body.Data[0] & 0x0f
-					headerLen := int(ihl) * 4
-					if len(body.Data) < headerLen+8 {
-						continue
-					}
-					
-					// Inner ICMP Header
-					innerICMP := body.Data[headerLen:]
-					// Type(1) Code(1) Cksum(2) ID(2) Seq(2)
-					// Echo Request type is 8.
-					
-					// Check ID to make sure it's ours
-					id := int(innerICMP[4])<<8 | int(innerICMP[5])
-					if id != t.id {
-						continue
-					}
-					
-					// Seq was our TTL
-					ttl = int(innerICMP[6])<<8 | int(innerICMP[7])
-					reached = false
-					
-				case ipv4.ICMPTypeEchoReply:
-					// Direct reply from target
-					pkt, ok := m.Body.(*icmp.Echo)
-					if !ok {
-						continue
-					}
-					if pkt.ID != t.id {
-						continue
-					}
-					ttl = pkt.Seq // We used Seq=TTL
-					reached = true
-					
-				default:
-					continue
-				}
-				
-				// Validate TTL is within range
-				if ttl < 1 || ttl > t.cfg.MaxHops {
-					continue
-				}
-
-				mu.Lock()
-				h := hopsMap[ttl]
-				if h != nil {
-					// Found the hop.
-					// Note: Peer is just IP string
-					peerIP := peer.String()
-					// Strip port if present (ipv4 shouldn't have it, but peer might be UDPAddr)
-					if addr, ok := peer.(*net.IPAddr); ok {
-						peerIP = addr.String()
-					} else if addr, ok := peer.(*net.UDPAddr); ok {
-						peerIP = addr.IP.String()
-					}
-					
-					h.IP = peerIP
-					if reached {
-						h.ReachedDest = true
-					}
-					// We can't calculate exact RTT here easily without a map of sent times per *probe*
-					// Since we flood, let's fix this in Phase 2. 
-					// For now in this simplification, we assume RTT ~ Since Start of Trace? NO.
-					// We need to store SendTime for each Probe sequence.
-					// Let's defer RTT calculation logic for a moment or treat RTT as unavailable in this simplified flood?
-					// Improving:
-				}
-				mu.Unlock()
-				
-				// Calculate RTT requires associating seq with send time. 
-				// The receiver needs access to a shared map of specific {TTL, QueryIdx} -> SendTime.
+				packets <- &icmpMessage{Msg: m, Peer: peer, RecvTime: time.Now()}
 			}
 		}
 	}()
-	
-	// Phase 2: Refined Sending with RTT tracking
-	// Create a map to track Sent times
-	sentTimes := make(map[int]time.Time) // Map Seq -> Time
-	var sentMu sync.Mutex
-	
-	// Refined Receiver Logic (Monkey Patching the above imagined logic)
-	// Actually, let's rewrite the receiver part cleanly below in the actual file.
-	// I'll put placeholders here in the prompt explanation but write full logic in file.
-	
-	// Sending Loop
-	pconn := ipv4.NewPacketConn(conn)
-	
-	for i := 1; i <= t.cfg.MaxHops; i++ {
-		// Set TTL
-		if err := pconn.SetTTL(i); err != nil {
-			// Handle error
+
+	// Loop through TTLs
+	for ttl := 1; ttl <= t.cfg.MaxHops; ttl++ {
+		hop := hops[ttl-1]
+
+		// Send Probes
+		for q := 0; q < t.cfg.Queries; q++ {
+			pconn.SetTTL(ttl)
+
+			// Encode Seq: (TTL << 8) | queryIdx
+			seq := (ttl << 8) | q
+
+			msg := icmp.Message{
+				Type: ipv4.ICMPTypeEcho, Code: 0,
+				Body: &icmp.Echo{
+					ID: t.pid, Seq: seq,
+					Data: []byte("NNS"),
+				},
+			}
+			b, _ := msg.Marshal(nil)
+
+			t.mu.Lock()
+			t.sentTimes[seq] = time.Now()
+			t.sentHost[seq] = ttl // Track expected TTL
+			t.mu.Unlock()
+
+			if _, err := c.WriteTo(b, dstIP); err != nil {
+				// Log error?
+			}
+			hop.ProbesSent++
+			time.Sleep(20 * time.Millisecond) // Inter-probe delay
 		}
-		
-		msg := icmp.Message{
-			Type: ipv4.ICMPTypeEcho, Code: 0,
-			Body: &icmp.Echo{
-				ID: t.id, Seq: i, // Seq = TTL is simple, but limits us to 1 query per hop active?
-				// Actually we want 'i' as TTL, but we might send multiple queries.
-				// Let's encode Seq = (TTL << 8) | queryIdx
-				// Max TTL 255 fits in 8 bits. queries fits in 8 bits.
-				Data: []byte("NNS-Trace"),
-			},
+
+		// Wait for replies
+		timeout := time.After(t.cfg.Timeout)
+
+	ProbeLoop:
+		for {
+			select {
+			case pkt := <-packets:
+				t.processPacket(pkt, hops, dstIP.String())
+
+				t.mu.Lock()
+				currentDone := len(hop.RTTs) >= t.cfg.Queries
+				t.mu.Unlock()
+
+				if currentDone {
+					// We can stop waiting if we have all replies
+					break ProbeLoop
+				} else if hop.ReachedDest {
+					// If we reached dest, give it a tiny bit more time for other probes then break
+					// Actually, standard traceroute often shows mix.
+					// Let's just break loop if we have all query results or if we reached dest and have at least 1 result?
+					// Nah, wait for timeout or full count.
+				}
+
+			case <-timeout:
+				break ProbeLoop
+			case <-ctx.Done():
+				return nil
+			}
 		}
-		b, _ := msg.Marshal(nil)
-		
-		start := time.Now()
-		// Store start time
-		sentMu.Lock()
-		sentTimes[i] = start
-		sentMu.Unlock()
-		
-		if _, err := pconn.WriteTo(b, nil, dstIP); err != nil {
-			// Error
+
+		// Finalize Hop
+		t.enrichHop(hop)
+		callback(hop)
+
+		if hop.ReachedDest {
+			break
 		}
-		
-		time.Sleep(50 * time.Millisecond) // Slight pacing
 	}
-	
-	// Wait for timeout
-	select {
-	case <-time.After(t.cfg.Timeout):
-	case <-ctx.Done():
+
+	return nil
+}
+
+type icmpMessage struct {
+	Msg      *icmp.Message
+	Peer     net.Addr
+	RecvTime time.Time
+}
+
+func (t *Tracer) processPacket(pkt *icmpMessage, hops []*Hop, dstIP string) {
+	var seq int
+	var peerIP string
+
+	if addr, ok := pkt.Peer.(*net.IPAddr); ok {
+		peerIP = addr.String()
+	} else if addr, ok := pkt.Peer.(*net.UDPAddr); ok {
+		peerIP = addr.IP.String()
+	} else {
+		peerIP = pkt.Peer.String()
 	}
-	
-	return res, nil
+
+	// Extract Original Seq
+	switch pkt.Msg.Type {
+	case ipv4.ICMPTypeTimeExceeded:
+		body, ok := pkt.Msg.Body.(*icmp.TimeExceeded)
+		if !ok || len(body.Data) < 28 {
+			return
+		}
+
+		// Parse inner IP to skip
+		ihl := body.Data[0] & 0x0f
+		headerLen := int(ihl) * 4
+		if len(body.Data) < headerLen+8 {
+			return
+		}
+
+		innerICMP := body.Data[headerLen:]
+
+		id := int(innerICMP[4])<<8 | int(innerICMP[5])
+		if id != t.pid {
+			return
+		}
+		seq = int(innerICMP[6])<<8 | int(innerICMP[7])
+
+	case ipv4.ICMPTypeEchoReply:
+		body, ok := pkt.Msg.Body.(*icmp.Echo)
+		if !ok || body.ID != t.pid {
+			return
+		}
+		seq = body.Seq
+
+	default:
+		return
+	}
+
+	// Decode Seq -> TTL
+	ttl := seq >> 8
+	if ttl < 1 || ttl > len(hops) {
+		return
+	}
+
+	// Calc RTT
+	t.mu.Lock()
+	sent, ok := t.sentTimes[seq]
+	t.mu.Unlock()
+
+	if !ok {
+		return
+	} // Stray packet
+
+	rtt := pkt.RecvTime.Sub(sent)
+
+	hop := hops[ttl-1]
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	hop.RTTs = append(hop.RTTs, rtt)
+	hop.IP = peerIP
+
+	if pkt.Msg.Type == ipv4.ICMPTypeEchoReply {
+		hop.ReachedDest = true
+	}
+	if peerIP == dstIP {
+		hop.ReachedDest = true
+	}
+}
+
+func (t *Tracer) enrichHop(h *Hop) {
+	if h.IP == "" {
+		h.Timeout = true
+		return
+	}
+
+	// Resolve Hostname
+	names, _ := net.LookupAddr(h.IP)
+	if len(names) > 0 {
+		h.Hosts = names
+	}
+
+	if t.cfg.ResolveAS {
+		h.ASN, h.Org = LookupAS(h.IP)
+	}
+}
+
+// LookupAS performs DNS-based AS lookup.
+func LookupAS(ip string) (string, string) {
+	// Revert IP: 1.2.3.4 -> 4.3.2.1
+	parts := parseIP(ip)
+	if parts == nil {
+		return "", ""
+	}
+
+	query := fmt.Sprintf("%s.%s.%s.%s.origin.asn.cymru.com", parts[3], parts[2], parts[1], parts[0])
+
+	txts, err := net.LookupTXT(query)
+	if err != nil || len(txts) == 0 {
+		return "", ""
+	}
+
+	// Format: "15169 | 8.8.8.0/24 | US | google | 2000-01-01"
+	fields := strings.Split(txts[0], "|")
+	if len(fields) >= 1 {
+		asn := "AS" + strings.TrimSpace(fields[0])
+		org := ""
+		if len(fields) >= 4 {
+			org = strings.TrimSpace(fields[3])
+		}
+		return asn, org
+	}
+
+	return "", ""
+}
+
+func parseIP(ip string) []string {
+	p := net.ParseIP(ip)
+	if p == nil {
+		return nil
+	}
+	p4 := p.To4()
+	if p4 == nil {
+		return nil
+	}
+	return []string{
+		fmt.Sprintf("%d", p4[0]),
+		fmt.Sprintf("%d", p4[1]),
+		fmt.Sprintf("%d", p4[2]),
+		fmt.Sprintf("%d", p4[3]),
+	}
 }
