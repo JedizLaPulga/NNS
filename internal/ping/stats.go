@@ -148,7 +148,7 @@ func percentile(values []time.Duration, p float64) time.Duration {
 		return sorted[i] < sorted[j]
 	})
 
-	index := int(float64(len(sorted)-1) * p)
+	index := int(math.Round(float64(len(sorted)-1) * p))
 	return sorted[index]
 }
 

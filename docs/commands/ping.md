@@ -1,6 +1,6 @@
 # Ping Command
 
-Send ICMP echo requests to test network connectivity and measure latency.
+Send ICMP Echo Requests to network hosts to measure reachability, latency, and packet loss. NNS Ping provides enhanced statistics including jitter, percentiles, and quality ratings.
 
 ## Usage
 
@@ -8,24 +8,26 @@ Send ICMP echo requests to test network connectivity and measure latency.
 nns ping [OPTIONS] <HOST>
 ```
 
+> **Note**: Ping requires administrator/root privileges to open raw sockets for ICMP.
+
 ## Options
 
-*To be documented when implemented*
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--count` | `-c` | int | 0 | Number of pings to send (0 = infinite) |
+| `--interval` | `-i` | duration | 1s | Time between pings |
+| `--timeout` | `-t` | duration | 4s | Timeout per ping request |
+| `--size` | `-s` | int | 64 | Packet size in bytes |
+| `--help` | - | bool | false | Show help message |
 
 ## Examples
 
-*To be documented when implemented*
+### Basic Usage
 
 ```bash
-# Basic ping
+# Ping indefinitely (Ctrl+C to stop)
 nns ping google.com
 
-# Ping with custom count
-nns ping google.com --count 10
-
-# Ping with timeout
-nns ping google.com --timeout 5s
-```
 
 ## Technical Details
 
