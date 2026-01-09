@@ -1,3 +1,8 @@
 module github.com/JedizLaPulga/NNS
 
 go 1.25.5
+
+require (
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+)
