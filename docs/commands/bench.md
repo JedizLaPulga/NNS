@@ -1,6 +1,6 @@
 # HTTP Benchmark Command
 
-Benchmark HTTP endpoints for performance testing.
+Performance test HTTP endpoints with detailed latency metrics and support for high concurrency.
 
 ## Usage
 
@@ -10,21 +10,17 @@ nns bench [OPTIONS] <URL>
 
 ## Options
 
-*To be documented when implemented*
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--requests` | `-n` | int | 1 | Number of requests to run |
+| `--concurrency` | `-c` | int | 1 | Number of concurrent workers |
+| `--duration` | `-z` | duration | 0 | Duration of test (overrides -n) |
+| `--timeout` | `-t` | duration | 10s | Request timeout |
+| `--method` | `-m` | string | GET | HTTP method |
+| `--keepalive` | - | bool | true | Use HTTP Keep-Alive |
 
 ## Examples
 
-*To be documented when implemented*
-
-```bash
-# Benchmark with fixed number of requests
-nns bench https://api.example.com --requests 1000 --concurrent 10
-
-# Benchmark with duration
-nns bench https://api.example.com --duration 30s
-
-# Benchmark with custom headers
-nns bench https://api.example.com --header "Authorization: Bearer token"
 ```
 
 ## Technical Details
