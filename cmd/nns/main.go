@@ -424,6 +424,8 @@ OPTIONS:
   -a, --as          Resolve AS numbers (default: true)
   --help            Show this help message
 
+> **Windows Note**: You may need to allow "File and Printer Sharing (Echo Request - ICMPv4-In)" and "ICMPv4 Time Exceeded" in Windows Firewall to receive replies.
+
 EXAMPLES:
   nns traceroute google.com
   nns traceroute -m 64 example.com`)
