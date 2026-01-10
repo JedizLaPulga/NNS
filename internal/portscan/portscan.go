@@ -2,6 +2,7 @@
 package portscan
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sort"
@@ -22,20 +23,22 @@ type ScanResult struct {
 
 // Scanner configures port scanning behavior.
 type Scanner struct {
-	Timeout     time.Duration
-	Concurrency int
+	Timeout       time.Duration
+	BannerTimeout time.Duration
+	Concurrency   int
 }
 
 // NewScanner creates a new Scanner with default settings.
 func NewScanner() *Scanner {
 	return &Scanner{
-		Timeout:     2 * time.Second,
-		Concurrency: 100,
+		Timeout:       2 * time.Second,
+		BannerTimeout: 1 * time.Second,
+		Concurrency:   100,
 	}
 }
 
 // ScanPort scans a single port on the specified host.
-func ScanPort(host string, port int, timeout time.Duration) ScanResult {
+func ScanPort(host string, port int, timeout time.Duration, bannerTimeout time.Duration) ScanResult {
 	result := ScanResult{
 		Host: host,
 		Port: port,
@@ -50,23 +53,25 @@ func ScanPort(host string, port int, timeout time.Duration) ScanResult {
 		result.Error = err
 		return result
 	}
+	defer conn.Close()
 
 	result.Open = true
 
-	// Try to grab banner
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-	banner := make([]byte, 1024)
-	n, _ := conn.Read(banner)
-	if n > 0 {
-		result.Banner = strings.TrimSpace(string(banner[:n]))
+	// Try to grab banner with configurable timeout
+	if err := conn.SetReadDeadline(time.Now().Add(bannerTimeout)); err == nil {
+		banner := make([]byte, 1024)
+		n, _ := conn.Read(banner)
+		if n > 0 {
+			result.Banner = strings.TrimSpace(string(banner[:n]))
+		}
 	}
 
-	conn.Close()
 	return result
 }
 
 // ScanPorts scans multiple ports on a host using concurrent workers.
-func (s *Scanner) ScanPorts(host string, ports []int) []ScanResult {
+// It respects context cancellation for early termination.
+func (s *Scanner) ScanPorts(ctx context.Context, host string, ports []int) []ScanResult {
 	results := make([]ScanResult, 0, len(ports))
 	resultsChan := make(chan ScanResult, len(ports))
 	portsChan := make(chan int, len(ports))
@@ -84,8 +89,13 @@ func (s *Scanner) ScanPorts(host string, ports []int) []ScanResult {
 		go func() {
 			defer wg.Done()
 			for port := range portsChan {
-				result := ScanPort(host, port, s.Timeout)
-				resultsChan <- result
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					result := ScanPort(host, port, s.Timeout, s.BannerTimeout)
+					resultsChan <- result
+				}
 			}
 		}()
 	}
@@ -93,7 +103,11 @@ func (s *Scanner) ScanPorts(host string, ports []int) []ScanResult {
 	// Send ports to workers
 	go func() {
 		for _, port := range ports {
-			portsChan <- port
+			select {
+			case <-ctx.Done():
+				break
+			case portsChan <- port:
+			}
 		}
 		close(portsChan)
 	}()
@@ -202,8 +216,12 @@ func ParseCIDR(cidr string) ([]string, error) {
 
 	hosts := make([]string, 0)
 
+	// Copy the network IP to avoid mutating ipNet.IP
+	ip := make(net.IP, len(ipNet.IP))
+	copy(ip, ipNet.IP)
+
 	// Iterate through all IPs in the network
-	for ip := ipNet.IP.Mask(ipNet.Mask); ipNet.Contains(ip); incIP(ip) {
+	for ; ipNet.Contains(ip); incIP(ip) {
 		// Skip network and broadcast addresses for typical subnets
 		if !isNetworkOrBroadcast(ip, ipNet) {
 			hosts = append(hosts, ip.String())

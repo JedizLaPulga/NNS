@@ -1,6 +1,7 @@
 package portscan
 
 import (
+	"context"
 	"net"
 	"reflect"
 	"testing"
@@ -187,7 +188,7 @@ func TestScanPort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ScanPort(tt.host, tt.port, 2*time.Second)
+			result := ScanPort(tt.host, tt.port, 2*time.Second, 1*time.Second)
 			if result.Open != tt.wantOpen {
 				t.Errorf("ScanPort() Open = %v, want %v", result.Open, tt.wantOpen)
 			}
@@ -242,7 +243,7 @@ func TestScannerScanPorts(t *testing.T) {
 	// Scan the test ports plus some closed ports
 	portsToScan := append(testPorts, 9, 10, 11)
 
-	results := scanner.ScanPorts("127.0.0.1", portsToScan)
+	results := scanner.ScanPorts(context.Background(), "127.0.0.1", portsToScan)
 
 	if len(results) != len(portsToScan) {
 		t.Errorf("ScanPorts() returned %d results, want %d", len(results), len(portsToScan))
@@ -316,7 +317,7 @@ func BenchmarkScanPort(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ScanPort("127.0.0.1", testPort, 2*time.Second)
+		ScanPort("127.0.0.1", testPort, 2*time.Second, 1*time.Second)
 	}
 }
 

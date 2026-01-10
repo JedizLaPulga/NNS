@@ -4,6 +4,7 @@ package traceroute
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -41,7 +42,6 @@ type Tracer struct {
 	cfg       Config
 	pid       int
 	sentTimes map[int]time.Time // Seq -> SendTime
-	sentHost  map[int]int       // Seq -> TTL (Validation)
 	mu        sync.Mutex
 }
 
@@ -61,7 +61,6 @@ func NewTracer(cfg Config) *Tracer {
 		cfg:       cfg,
 		pid:       os.Getpid() & 0xffff,
 		sentTimes: make(map[int]time.Time),
-		sentHost:  make(map[int]int),
 	}
 }
 
@@ -131,15 +130,18 @@ func (t *Tracer) Run(ctx context.Context, callback func(h *Hop)) error {
 					Data: []byte("NNS"),
 				},
 			}
-			b, _ := msg.Marshal(nil)
+			b, err := msg.Marshal(nil)
+			if err != nil {
+				log.Printf("traceroute: failed to marshal ICMP message: %v", err)
+				continue
+			}
 
 			t.mu.Lock()
 			t.sentTimes[seq] = time.Now()
-			t.sentHost[seq] = ttl // Track expected TTL
 			t.mu.Unlock()
 
 			if _, err := c.WriteTo(b, dstIP); err != nil {
-				// Log error?
+				log.Printf("traceroute: failed to send probe TTL=%d: %v", ttl, err)
 			}
 			hop.ProbesSent++
 			time.Sleep(20 * time.Millisecond) // Inter-probe delay
@@ -159,14 +161,9 @@ func (t *Tracer) Run(ctx context.Context, callback func(h *Hop)) error {
 				t.mu.Unlock()
 
 				if currentDone {
-					// We can stop waiting if we have all replies
 					break ProbeLoop
-				} else if hop.ReachedDest {
-					// If we reached dest, give it a tiny bit more time for other probes then break
-					// Actually, standard traceroute often shows mix.
-					// Let's just break loop if we have all query results or if we reached dest and have at least 1 result?
-					// Nah, wait for timeout or full count.
 				}
+				// Continue waiting for remaining probes even after reaching destination
 
 			case <-timeout:
 				break ProbeLoop

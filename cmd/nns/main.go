@@ -151,7 +151,7 @@ EXAMPLES:
 	for _, host := range hosts {
 		fmt.Printf("\nScanning %s...\n", host)
 
-		results := scanner.ScanPorts(host, ports)
+		results := scanner.ScanPorts(context.Background(), host, ports)
 
 		// Display results
 		fmt.Printf("\n%-10s %-10s %s\n", "PORT", "STATE", "BANNER")

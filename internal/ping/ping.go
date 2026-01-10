@@ -12,6 +12,9 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
+// icmpProtocol is the protocol number for ICMPv4.
+const icmpProtocol = 1
+
 // PingResult represents the result of a single ping.
 type PingResult struct {
 	Seq     int
@@ -98,26 +101,38 @@ func (p *Pinger) Run(ctx context.Context, callback func(PingResult)) error {
 		return fmt.Errorf("failed to resolve IP address: %v", err)
 	}
 
+	// Wrapper callback that updates statistics
+	wrappedCallback := func(result PingResult) {
+		if result.Success {
+			p.Stats.AddRTT(result.RTT)
+		} else {
+			p.Stats.AddLost()
+		}
+		callback(result)
+	}
+
 	seq := 1
 	ticker := time.NewTicker(p.Interval)
 	defer ticker.Stop()
 
 	// Send first ping immediately
 	result := p.sendOne(dst, seq)
-	callback(result)
+	wrappedCallback(result)
 	seq++
 
 	for {
 		select {
 		case <-ctx.Done():
+			p.Stats.Calculate()
 			return nil
 		case <-ticker.C:
 			if p.Count > 0 && seq > p.Count {
+				p.Stats.Calculate()
 				return nil
 			}
 
 			result := p.sendOne(dst, seq)
-			callback(result)
+			wrappedCallback(result)
 			seq++
 		}
 	}
@@ -158,17 +173,24 @@ func (p *Pinger) sendOne(dst *net.IPAddr, seq int) PingResult {
 
 	// Wait for reply
 	reply := make([]byte, 1500)
-	p.conn.SetReadDeadline(time.Now().Add(p.Timeout))
+	if err := p.conn.SetReadDeadline(time.Now().Add(p.Timeout)); err != nil {
+		result.Error = fmt.Errorf("failed to set read deadline: %v", err)
+		return result
+	}
 
 	for {
 		n, peer, err := p.conn.ReadFrom(reply)
 		if err != nil {
-			result.Error = fmt.Errorf("timeout")
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				result.Error = fmt.Errorf("timeout")
+			} else {
+				result.Error = fmt.Errorf("read error: %v", err)
+			}
 			return result
 		}
 
 		// Parse ICMP message
-		replyMsg, err := icmp.ParseMessage(ipv4.ICMPTypeEchoReply.Protocol(), reply[:n])
+		replyMsg, err := icmp.ParseMessage(icmpProtocol, reply[:n])
 		if err != nil {
 			continue // Not a valid ICMP message
 		}
