@@ -126,6 +126,30 @@ func TestHopStruct(t *testing.T) {
 	if len(hop.RTTs) != 2 {
 		t.Errorf("RTTs count = %d, want 2", len(hop.RTTs))
 	}
+
+	if len(hop.Hosts) != 1 || hop.Hosts[0] != "dns.google" {
+		t.Errorf("Hosts = %v, want [dns.google]", hop.Hosts)
+	}
+
+	if hop.ASN != "AS15169" {
+		t.Errorf("ASN = %q, want AS15169", hop.ASN)
+	}
+
+	if hop.Org != "Google" {
+		t.Errorf("Org = %q, want Google", hop.Org)
+	}
+
+	if hop.ReachedDest {
+		t.Error("ReachedDest should be false")
+	}
+
+	if hop.Timeout {
+		t.Error("Timeout should be false")
+	}
+
+	if hop.ProbesSent != 3 {
+		t.Errorf("ProbesSent = %d, want 3", hop.ProbesSent)
+	}
 }
 
 func TestConfigStruct(t *testing.T) {
@@ -143,6 +167,18 @@ func TestConfigStruct(t *testing.T) {
 
 	if cfg.MaxHops != 20 {
 		t.Errorf("MaxHops = %d, want 20", cfg.MaxHops)
+	}
+
+	if cfg.Queries != 4 {
+		t.Errorf("Queries = %d, want 4", cfg.Queries)
+	}
+
+	if cfg.Timeout != 3*time.Second {
+		t.Errorf("Timeout = %v, want 3s", cfg.Timeout)
+	}
+
+	if !cfg.ResolveAS {
+		t.Error("ResolveAS should be true")
 	}
 }
 
