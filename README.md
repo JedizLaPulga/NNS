@@ -13,6 +13,7 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 - **Port Scanning** - Discover open ports and services on target hosts
 - **HTTP Benchmarking** - Performance test HTTP endpoints with detailed metrics
 - **DNS Lookup** - Query DNS records (A, MX, TXT, NS, etc.) with custom resolvers
+- **SSL Analysis** - Analyze TLS certificates with security grading (A+ to F)
 - **Debug Proxy** - Local proxy server for debugging HTTP traffic
 
 ## Why NNS?
@@ -60,7 +61,10 @@ nns traceroute google.com
 # DNS lookup
 nns dns google.com --type MX
 
-# Start debugging proxy (Coming Soon)
+# SSL certificate analysis
+nns ssl google.com --chain
+
+# Start debugging proxy
 nns proxy --port 8080
 ```
 
@@ -73,6 +77,7 @@ See the [docs](docs/) directory for detailed documentation on each command:
 - [Port Scan](docs/commands/portscan.md)
 - [HTTP Benchmark](docs/commands/bench.md)
 - [DNS Lookup](docs/commands/dns.md)
+- [SSL Analysis](docs/commands/ssl.md)
 - [Proxy Server](docs/commands/proxy.md)
 
 ## Project Structure
@@ -87,6 +92,7 @@ NNS/
 │   ├── portscan/     # Port scanning
 │   ├── bench/        # HTTP benchmarking
 │   ├── dns/          # DNS lookups
+│   ├── ssl/          # SSL/TLS analysis
 │   └── proxy/        # Proxy server
 ├── docs/             # Documentation
 └── img/              # Assets and logo
