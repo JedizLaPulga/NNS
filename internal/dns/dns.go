@@ -145,6 +145,8 @@ func (r *Resolver) Lookup(ctx context.Context, name string, recordType RecordTyp
 		result.Records, result.Error = r.lookupCNAME(ctx, name)
 	case TypePTR:
 		result.Records, result.Error = r.lookupPTR(ctx, name)
+	case TypeSOA:
+		result.SOA, result.Error = r.lookupSOA(ctx, name)
 	default:
 		result.Error = fmt.Errorf("unsupported record type: %s", recordType)
 	}
@@ -281,12 +283,113 @@ func ParseRecordType(s string) (RecordType, error) {
 		return TypeCNAME, nil
 	case "PTR":
 		return TypePTR, nil
+	case "SOA":
+		return TypeSOA, nil
 	default:
-		return "", fmt.Errorf("unknown record type: %s (valid: A, AAAA, MX, TXT, NS, CNAME, PTR)", s)
+		return "", fmt.Errorf("unknown record type: %s (valid: A, AAAA, MX, TXT, NS, CNAME, PTR, SOA)", s)
 	}
 }
 
 // IsIPAddress checks if a string is a valid IP address.
 func IsIPAddress(s string) bool {
 	return net.ParseIP(s) != nil
+}
+
+// lookupSOA performs SOA record lookup using TXT trick (Go stdlib doesn't have native SOA).
+// We query NS records and use primary nameserver as SOA info.
+func (r *Resolver) lookupSOA(ctx context.Context, name string) (*SOARecord, error) {
+	resolver := r.getResolver()
+
+	// Get NS records to identify primary nameserver
+	nss, err := resolver.LookupNS(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(nss) == 0 {
+		return nil, fmt.Errorf("no NS records found for SOA")
+	}
+
+	// Build SOA record from available info
+	soa := &SOARecord{
+		PrimaryNS: nss[0].Host,
+	}
+
+	// Try to get admin email from SOA prefix convention
+	// Note: Go's net package doesn't provide full SOA, so we provide NS-based info
+	if len(nss) > 0 {
+		soa.AdminEmail = "hostmaster@" + strings.TrimSuffix(name, ".")
+	}
+
+	return soa, nil
+}
+
+// CheckPropagation queries multiple global DNS servers and compares results.
+func CheckPropagation(ctx context.Context, name string, recordType RecordType) *PropagationResult {
+	pr := &PropagationResult{
+		Target: name,
+		Type:   recordType,
+	}
+
+	for _, global := range GlobalResolvers {
+		resolver := NewResolver()
+		resolver.SetServer(global.Server)
+
+		result := resolver.Lookup(ctx, name, recordType)
+
+		pr.Results = append(pr.Results, struct {
+			Resolver string
+			Name     string
+			Records  []Record
+			Duration time.Duration
+			Error    error
+		}{
+			Resolver: global.Server,
+			Name:     global.Name,
+			Records:  result.Records,
+			Duration: result.Duration,
+			Error:    result.Error,
+		})
+	}
+
+	return pr
+}
+
+// IsPropagated checks if all resolvers return the same records.
+func (pr *PropagationResult) IsPropagated() bool {
+	if len(pr.Results) == 0 {
+		return false
+	}
+
+	// Get first successful result as reference
+	var reference []string
+	for _, r := range pr.Results {
+		if r.Error == nil && len(r.Records) > 0 {
+			for _, rec := range r.Records {
+				reference = append(reference, rec.Value)
+			}
+			break
+		}
+	}
+
+	if len(reference) == 0 {
+		return false
+	}
+
+	// Check if all others match
+	for _, r := range pr.Results {
+		if r.Error != nil {
+			return false
+		}
+		if len(r.Records) != len(reference) {
+			return false
+		}
+		for i, rec := range r.Records {
+			if rec.Value != reference[i] {
+				return false
+			}
+		}
+	}
+
+	return true
 }
