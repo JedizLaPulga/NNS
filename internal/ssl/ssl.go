@@ -2,6 +2,8 @@
 package ssl
 
 import (
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -172,25 +174,22 @@ func parseCertInfo(cert *x509.Certificate) CertInfo {
 
 // getPublicKeySize returns the key size in bits.
 func getPublicKeySize(cert *x509.Certificate) int {
-	switch cert.PublicKeyAlgorithm {
-	case x509.RSA:
-		if cert.PublicKey != nil {
-			// RSA key size is in the modulus
-			return cert.PublicKey.(interface{ Size() int }).Size() * 8
-		}
-	case x509.ECDSA:
-		// ECDSA sizes by curve
-		if cert.PublicKey != nil {
-			params := cert.PublicKey.(interface{ Params() interface{} }).Params()
-			if p, ok := params.(interface{ BitSize() int }); ok {
-				return p.BitSize()
-			}
-		}
-		return 256 // Default assumption
-	case x509.Ed25519:
-		return 256
+	if cert.PublicKey == nil {
+		return 0
 	}
-	return 0
+
+	switch pub := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		return pub.N.BitLen()
+	case *ecdsa.PublicKey:
+		return pub.Curve.Params().BitSize
+	default:
+		// Ed25519 and others
+		if cert.PublicKeyAlgorithm == x509.Ed25519 {
+			return 256
+		}
+		return 0
+	}
 }
 
 // analyzeChain analyzes the certificate chain.
