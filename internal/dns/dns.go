@@ -20,11 +20,24 @@ const (
 	TypeNS    RecordType = "NS"
 	TypeCNAME RecordType = "CNAME"
 	TypePTR   RecordType = "PTR"
+	TypeSOA   RecordType = "SOA"
 )
 
 // AllTypes returns all supported record types for --all flag.
 func AllTypes() []RecordType {
-	return []RecordType{TypeA, TypeAAAA, TypeMX, TypeTXT, TypeNS, TypeCNAME}
+	return []RecordType{TypeA, TypeAAAA, TypeMX, TypeTXT, TypeNS, TypeCNAME, TypeSOA}
+}
+
+// GlobalResolvers are well-known public DNS servers for propagation checking.
+var GlobalResolvers = []struct {
+	Name   string
+	Server string
+}{
+	{"Google", "8.8.8.8"},
+	{"Cloudflare", "1.1.1.1"},
+	{"Quad9", "9.9.9.9"},
+	{"OpenDNS", "208.67.222.222"},
+	{"Level3", "4.2.2.1"},
 }
 
 // Record represents a single DNS record.
@@ -34,13 +47,38 @@ type Record struct {
 	Priority int // For MX records
 }
 
+// SOARecord represents SOA (Start of Authority) record details.
+type SOARecord struct {
+	PrimaryNS  string
+	AdminEmail string
+	Serial     uint32
+	Refresh    uint32
+	Retry      uint32
+	Expire     uint32
+	MinTTL     uint32
+}
+
 // Result holds the result of a DNS query.
 type Result struct {
 	Type     RecordType
 	Records  []Record
+	SOA      *SOARecord // Only set for SOA queries
 	Duration time.Duration
 	Server   string
 	Error    error
+}
+
+// PropagationResult holds results from multiple DNS servers.
+type PropagationResult struct {
+	Target  string
+	Type    RecordType
+	Results []struct {
+		Resolver string
+		Name     string
+		Records  []Record
+		Duration time.Duration
+		Error    error
+	}
 }
 
 // Resolver performs DNS lookups.
