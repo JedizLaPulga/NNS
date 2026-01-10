@@ -14,6 +14,7 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 - **HTTP Benchmarking** - Performance test HTTP endpoints with detailed metrics
 - **DNS Lookup** - Query DNS records (A, MX, TXT, NS, etc.) with custom resolvers
 - **SSL Analysis** - Analyze TLS certificates with security grading (A+ to F)
+- **HTTP Client** - HTTP client with detailed timing breakdown (DNS, TLS, TTFB)
 - **Debug Proxy** - Local proxy server for debugging HTTP traffic
 
 ## Why NNS?
@@ -78,6 +79,7 @@ See the [docs](docs/) directory for detailed documentation on each command:
 - [HTTP Benchmark](docs/commands/bench.md)
 - [DNS Lookup](docs/commands/dns.md)
 - [SSL Analysis](docs/commands/ssl.md)
+- [HTTP Client](docs/commands/http.md)
 - [Proxy Server](docs/commands/proxy.md)
 
 ## Project Structure
@@ -93,6 +95,7 @@ NNS/
 │   ├── bench/        # HTTP benchmarking
 │   ├── dns/          # DNS lookups
 │   ├── ssl/          # SSL/TLS analysis
+│   ├── httpclient/   # HTTP client
 │   └── proxy/        # Proxy server
 ├── docs/             # Documentation
 └── img/              # Assets and logo
