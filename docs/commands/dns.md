@@ -12,9 +12,10 @@ nns dns [HOST] [OPTIONS]
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--type` | `-t` | Record type: A, AAAA, MX, TXT, NS, CNAME, PTR (default: A) |
+| `--type` | `-t` | Record type: A, AAAA, MX, TXT, NS, CNAME, PTR, SOA (default: A) |
 | `--resolver` | `-r` | Custom DNS server (e.g., 8.8.8.8, 1.1.1.1) |
 | `--all` | | Query all common record types |
+| `--propagation` | `-p` | Check DNS propagation across global resolvers |
 | `--short` | | Show only record values (for scripting) |
 | `--help` | | Show help message |
 
@@ -29,6 +30,7 @@ nns dns [HOST] [OPTIONS]
 | `NS` | Name servers |
 | `CNAME` | Canonical name (alias) |
 | `PTR` | Reverse DNS lookup |
+| `SOA` | Start of Authority (primary NS, admin email) |
 
 ## Examples
 
@@ -72,6 +74,22 @@ nns dns google.com --short
 
 # Use in scripts
 IP=$(nns dns example.com --short)
+```
+
+### Check DNS propagation
+```bash
+nns dns example.com --propagation
+
+# Output:
+# RESOLVER     IP               TIME       RECORDS
+# ----------------------------------------------------------------
+# Google       8.8.8.8          12ms       142.250.190.14
+# Cloudflare   1.1.1.1          8ms        142.250.190.14
+# Quad9        9.9.9.9          15ms       142.250.190.14
+# OpenDNS      208.67.222.222   18ms       142.250.190.14
+# Level3       4.2.2.1          21ms       142.250.190.14
+#
+# ✓ DNS is fully propagated across all resolvers
 ```
 
 ## Output Format
