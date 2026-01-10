@@ -245,11 +245,9 @@ EXAMPLES:
 	err := pinger.Run(ctx, func(res ping.PingResult) {
 		if res.Error != nil {
 			fmt.Printf("Request timeout for seq=%d: %v\n", res.Seq, res.Error)
-			pinger.Stats.AddLost()
 		} else {
 			fmt.Printf("Reply from %s: seq=%d time=%v TTL=%d\n",
 				pinger.ResolvedIP, res.Seq, res.RTT, res.TTL)
-			pinger.Stats.AddRTT(res.RTT)
 		}
 	})
 
@@ -258,8 +256,7 @@ EXAMPLES:
 		os.Exit(1)
 	}
 
-	// Calculate and display statistics
-	pinger.Stats.Calculate()
+	// Stats are already calculated by pinger.Run()
 
 	fmt.Printf("\n--- %s ping statistics ---\n", host)
 	fmt.Printf("%d packets transmitted, %d received, %.2f%% packet loss\n\n",

@@ -102,10 +102,11 @@ func (s *Scanner) ScanPorts(ctx context.Context, host string, ports []int) []Sca
 
 	// Send ports to workers
 	go func() {
+	PortLoop:
 		for _, port := range ports {
 			select {
 			case <-ctx.Done():
-				break
+				break PortLoop
 			case portsChan <- port:
 			}
 		}
