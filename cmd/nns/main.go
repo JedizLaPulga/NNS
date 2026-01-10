@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/JedizLaPulga/NNS/internal/bench"
+	"github.com/JedizLaPulga/NNS/internal/dns"
 	"github.com/JedizLaPulga/NNS/internal/ping"
 	"github.com/JedizLaPulga/NNS/internal/portscan"
 	"github.com/JedizLaPulga/NNS/internal/proxy"
@@ -37,6 +38,8 @@ func main() {
 		runPortScan(os.Args[2:])
 	case "bench":
 		runBench(os.Args[2:])
+	case "dns":
+		runDNS(os.Args[2:])
 	case "proxy":
 		runProxy(os.Args[2:])
 	default:
@@ -59,6 +62,7 @@ COMMANDS:
     traceroute   Trace the network path to a host
     portscan     Scan ports on a target host or network
     bench        Benchmark HTTP endpoints
+    dns          Perform DNS lookups (A, MX, TXT, etc.)
     proxy        Start a local debugging proxy server
 
 OPTIONS:
@@ -71,6 +75,7 @@ EXAMPLES:
     nns ping google.com
     nns portscan 192.168.1.1 --ports 80,443
     nns bench https://api.example.com --requests 1000
+    nns dns google.com --type MX
     nns proxy --port 8080
 `
 	fmt.Print(help)
@@ -542,4 +547,131 @@ EXAMPLES:
 		fmt.Fprintf(os.Stderr, "Proxy error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func runDNS(args []string) {
+	fs := flag.NewFlagSet("dns", flag.ExitOnError)
+
+	typeFlag := fs.String("type", "A", "Record type (A, AAAA, MX, TXT, NS, CNAME, PTR)")
+	resolverFlag := fs.String("resolver", "", "Custom DNS server (e.g., 8.8.8.8)")
+	allFlag := fs.Bool("all", false, "Query all common record types")
+	shortFlag := fs.Bool("short", false, "Show only record values")
+
+	// Short flags
+	fs.StringVar(typeFlag, "t", "A", "Record type")
+	fs.StringVar(resolverFlag, "r", "", "Custom DNS server")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns dns [HOST] [OPTIONS]
+
+Perform DNS lookups for various record types.
+
+OPTIONS:
+  -t, --type        Record type: A, AAAA, MX, TXT, NS, CNAME, PTR (default: A)
+  -r, --resolver    Custom DNS server (e.g., 8.8.8.8, 1.1.1.1)
+      --all         Query all common record types
+      --short       Show only record values (for scripting)
+      --help        Show this help message
+
+EXAMPLES:
+  nns dns google.com
+  nns dns google.com --type MX
+  nns dns google.com --type TXT
+  nns dns 8.8.8.8 --type PTR
+  nns dns google.com --all
+  nns dns google.com --resolver 1.1.1.1`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: hostname or IP required\n\n")
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	target := fs.Arg(0)
+
+	// Create resolver
+	resolver := dns.NewResolver()
+	if *resolverFlag != "" {
+		resolver.SetServer(*resolverFlag)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Auto-detect PTR for IP addresses
+	recordType := *typeFlag
+	if dns.IsIPAddress(target) && recordType == "A" {
+		recordType = "PTR"
+	}
+
+	if *allFlag {
+		// Query all types
+		fmt.Printf("DNS lookup for %s (all types)\n", target)
+		if *resolverFlag != "" {
+			fmt.Printf("Using resolver: %s\n", *resolverFlag)
+		}
+		fmt.Println()
+
+		results := resolver.LookupAll(ctx, target)
+		for _, result := range results {
+			printDNSResult(&result, *shortFlag)
+		}
+	} else {
+		// Single type query
+		rt, err := dns.ParseRecordType(recordType)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if !*shortFlag {
+			fmt.Printf("DNS lookup for %s (type: %s)\n", target, rt)
+			if *resolverFlag != "" {
+				fmt.Printf("Using resolver: %s\n", *resolverFlag)
+			}
+			fmt.Println()
+		}
+
+		result := resolver.Lookup(ctx, target, rt)
+		printDNSResult(result, *shortFlag)
+	}
+}
+
+func printDNSResult(result *dns.Result, short bool) {
+	if result.Error != nil {
+		if !short {
+			fmt.Printf("%-6s  (no records: %v)\n", result.Type, result.Error)
+		}
+		return
+	}
+
+	if len(result.Records) == 0 {
+		if !short {
+			fmt.Printf("%-6s  (no records)\n", result.Type)
+		}
+		return
+	}
+
+	if short {
+		for _, rec := range result.Records {
+			fmt.Println(rec.Value)
+		}
+		return
+	}
+
+	// Verbose output
+	for _, rec := range result.Records {
+		if rec.Priority > 0 {
+			fmt.Printf("%-6s  %d %s\n", rec.Type, rec.Priority, rec.Value)
+		} else {
+			fmt.Printf("%-6s  %s\n", rec.Type, rec.Value)
+		}
+	}
+
+	fmt.Printf("        Query time: %v\n\n", result.Duration)
 }
