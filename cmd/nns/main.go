@@ -10,8 +10,12 @@ import (
 
 	"github.com/JedizLaPulga/NNS/internal/arp"
 	"github.com/JedizLaPulga/NNS/internal/bench"
+	"github.com/JedizLaPulga/NNS/internal/cidr"
 	"github.com/JedizLaPulga/NNS/internal/dns"
+	"github.com/JedizLaPulga/NNS/internal/headers"
 	"github.com/JedizLaPulga/NNS/internal/httpclient"
+	"github.com/JedizLaPulga/NNS/internal/ipinfo"
+	"github.com/JedizLaPulga/NNS/internal/macutil"
 	"github.com/JedizLaPulga/NNS/internal/netstat"
 	"github.com/JedizLaPulga/NNS/internal/ping"
 	"github.com/JedizLaPulga/NNS/internal/portscan"
@@ -20,6 +24,7 @@ import (
 	"github.com/JedizLaPulga/NNS/internal/sweep"
 	"github.com/JedizLaPulga/NNS/internal/traceroute"
 	"github.com/JedizLaPulga/NNS/internal/whois"
+	"github.com/JedizLaPulga/NNS/internal/wol"
 )
 
 const version = "0.1.0"
@@ -99,6 +104,11 @@ COMMANDS:
     arp          View ARP table with MAC vendor lookup
     whois        WHOIS lookup for domains and IPs
     netstat      Show network connections and routing
+    wol          Wake-on-LAN - power on remote machines
+    headers      Analyze HTTP security headers
+    ipinfo       IP geolocation and ASN lookup
+    cidr         CIDR/subnet calculator
+    mac          MAC address utilities
 
 OPTIONS:
     --version, -v    Show version information
@@ -1546,4 +1556,466 @@ EXAMPLES:
 	}
 
 	fmt.Printf("\nTotal: %d connections\n", len(conns))
+}
+
+func runWOL(args []string) {
+	fs := flag.NewFlagSet("wol", flag.ExitOnError)
+
+	broadcastFlag := fs.String("broadcast", "255.255.255.255", "Broadcast address")
+	portFlag := fs.Int("port", 9, "UDP port")
+	interfaceFlag := fs.String("interface", "", "Network interface")
+
+	// Short flags
+	fs.StringVar(broadcastFlag, "b", "255.255.255.255", "Broadcast")
+	fs.IntVar(portFlag, "p", 9, "Port")
+	fs.StringVar(interfaceFlag, "i", "", "Interface")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns wol [MAC] [OPTIONS]
+
+Wake-on-LAN - send magic packet to power on remote machines.
+
+OPTIONS:
+  -b, --broadcast   Broadcast address (default: 255.255.255.255)
+  -p, --port        UDP port (default: 9)
+  -i, --interface   Network interface to use
+      --help        Show this help message
+
+EXAMPLES:
+  nns wol aa:bb:cc:dd:ee:ff
+  nns wol aa:bb:cc:dd:ee:ff --broadcast 192.168.1.255
+  nns wol aa:bb:cc:dd:ee:ff --interface eth0`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: MAC address required\n\n")
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	mac := fs.Arg(0)
+	formattedMAC := wol.FormatMAC(mac)
+
+	fmt.Printf("Sending Wake-on-LAN magic packet to %s...\n", formattedMAC)
+
+	var err error
+	if *interfaceFlag != "" {
+		err = wol.WakeWithInterface(mac, *interfaceFlag, *portFlag)
+	} else {
+		err = wol.Wake(mac, *broadcastFlag, *portFlag)
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Magic packet sent successfully!")
+}
+
+func runHeaders(args []string) {
+	fs := flag.NewFlagSet("headers", flag.ExitOnError)
+
+	timeoutFlag := fs.Duration("timeout", 10*time.Second, "Request timeout")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns headers [URL] [OPTIONS]
+
+Analyze HTTP security headers with scoring.
+
+OPTIONS:
+      --timeout    Request timeout (default: 10s)
+      --help       Show this help message
+
+EXAMPLES:
+  nns headers google.com
+  nns headers https://example.com`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: URL required\n\n")
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	url := fs.Arg(0)
+
+	analyzer := headers.NewAnalyzer()
+	analyzer.Timeout = *timeoutFlag
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeoutFlag)
+	defer cancel()
+
+	result, err := analyzer.Analyze(ctx, url)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Print results
+	fmt.Printf("Security Headers Analysis for %s\n", result.URL)
+	fmt.Println("════════════════════════════════════════════════════════════════")
+
+	// Grade
+	gradeColor := ""
+	gradeReset := ""
+	switch result.Grade[0] {
+	case 'A':
+		gradeColor = "\033[32m"
+		gradeReset = "\033[0m"
+	case 'B':
+		gradeColor = "\033[33m"
+		gradeReset = "\033[0m"
+	default:
+		gradeColor = "\033[31m"
+		gradeReset = "\033[0m"
+	}
+	fmt.Printf("\n  Grade: %s%s%s (Score: %d/100)\n", gradeColor, result.Grade, gradeReset, result.Score)
+
+	// Present headers
+	fmt.Println("\n─── Present Headers ────────────────────────────────────────────")
+	present := result.GetPresentHeaders()
+	if len(present) > 0 {
+		for _, h := range present {
+			value := result.Headers[h]
+			if len(value) > 50 {
+				value = value[:47] + "..."
+			}
+			fmt.Printf("  ✓ %-35s %s\n", h, value)
+		}
+	} else {
+		fmt.Println("  None")
+	}
+
+	// Missing headers
+	fmt.Println("\n─── Missing Headers ────────────────────────────────────────────")
+	missing := result.GetMissingHeaders()
+	if len(missing) > 0 {
+		for _, h := range missing {
+			fmt.Printf("  ✗ %s\n", h)
+		}
+	} else {
+		fmt.Println("  None - Great job!")
+	}
+
+	// Issues
+	if len(result.Issues) > 0 {
+		fmt.Println("\n─── Security Issues ────────────────────────────────────────────")
+		for _, issue := range result.Issues {
+			icon := "ℹ"
+			if issue.Severity == headers.SeverityWarning {
+				icon = "⚠"
+			} else if issue.Severity == headers.SeverityCritical {
+				icon = "✗"
+			}
+			fmt.Printf("  %s [%s] %s\n", icon, issue.Header, issue.Message)
+			if issue.Fix != "" {
+				fmt.Printf("    Fix: %s\n", issue.Fix)
+			}
+		}
+	}
+
+	fmt.Printf("\n  Query Time: %v\n", result.Duration.Round(time.Millisecond))
+}
+
+func runIPInfo(args []string) {
+	fs := flag.NewFlagSet("ipinfo", flag.ExitOnError)
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns ipinfo [IP] [OPTIONS]
+
+Get IP geolocation and ASN information.
+
+OPTIONS:
+      --help    Show this help message
+
+EXAMPLES:
+  nns ipinfo              # Show your public IP info
+  nns ipinfo 8.8.8.8      # Lookup specific IP
+  nns ipinfo 1.1.1.1`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	ip := ""
+	if fs.NArg() > 0 {
+		ip = fs.Arg(0)
+	}
+
+	client := ipinfo.NewClient()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	info, err := client.Lookup(ctx, ip)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Print results
+	fmt.Printf("IP Information for %s\n", info.IP)
+	fmt.Println("════════════════════════════════════════════════════════════════")
+
+	if info.IsPrivate {
+		fmt.Println("  ⚠ This is a private IP address")
+	} else if info.IsBogon {
+		fmt.Println("  ⚠ This is a bogon/reserved IP address")
+	}
+
+	if info.Hostname != "" {
+		fmt.Printf("  Hostname:     %s\n", info.Hostname)
+	}
+	if info.City != "" || info.Region != "" {
+		fmt.Printf("  Location:     %s, %s\n", info.City, info.Region)
+	}
+	if info.Country != "" {
+		flag := ipinfo.CountryFlag(info.CountryCode)
+		fmt.Printf("  Country:      %s %s\n", flag, info.Country)
+	}
+	if info.Postal != "" {
+		fmt.Printf("  Postal:       %s\n", info.Postal)
+	}
+	if info.Location != "" && info.Location != "0.0000, 0.0000" {
+		fmt.Printf("  Coordinates:  %s\n", info.Location)
+	}
+	if info.Timezone != "" {
+		fmt.Printf("  Timezone:     %s\n", info.Timezone)
+	}
+	if info.ASN != "" {
+		fmt.Printf("  ASN:          %s\n", info.ASN)
+	}
+	if info.Org != "" {
+		fmt.Printf("  Organization: %s\n", info.Org)
+	}
+	if info.ISP != "" && info.ISP != info.Org {
+		fmt.Printf("  ISP:          %s\n", info.ISP)
+	}
+
+	fmt.Printf("\n  Query Time:   %v\n", info.Duration.Round(time.Millisecond))
+}
+
+func runCIDR(args []string) {
+	fs := flag.NewFlagSet("cidr", flag.ExitOnError)
+
+	containsFlag := fs.String("contains", "", "Check if IP is in CIDR range")
+	splitFlag := fs.Int("split", 0, "Split into smaller subnets with this prefix")
+	rangeFlag := fs.Bool("range", false, "List all IPs in range")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns cidr [CIDR] [OPTIONS]
+
+CIDR/subnet calculator and utilities.
+
+OPTIONS:
+      --contains    Check if IP is within CIDR range
+      --split       Split into smaller subnets (specify new prefix)
+      --range       List all IPs in the range
+      --help        Show this help message
+
+EXAMPLES:
+  nns cidr 192.168.1.0/24
+  nns cidr 10.0.0.0/8 --contains 10.1.2.3
+  nns cidr 192.168.0.0/24 --split 26
+  nns cidr 192.168.1.0/28 --range`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: CIDR required\n\n")
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	cidrStr := fs.Arg(0)
+
+	// Check if IP is in range
+	if *containsFlag != "" {
+		contains, err := cidr.Contains(cidrStr, *containsFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if contains {
+			fmt.Printf("✓ %s is within %s\n", *containsFlag, cidrStr)
+		} else {
+			fmt.Printf("✗ %s is NOT within %s\n", *containsFlag, cidrStr)
+		}
+		return
+	}
+
+	// Split subnet
+	if *splitFlag > 0 {
+		subnets, err := cidr.Split(cidrStr, *splitFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Splitting %s into /%d subnets:\n\n", cidrStr, *splitFlag)
+		for i, subnet := range subnets {
+			fmt.Printf("  %d. %s\n", i+1, subnet)
+		}
+		fmt.Printf("\nTotal: %d subnets\n", len(subnets))
+		return
+	}
+
+	// List all IPs
+	if *rangeFlag {
+		ips, err := cidr.IPRange(cidrStr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		for _, ip := range ips {
+			fmt.Println(ip)
+		}
+		return
+	}
+
+	// Default: show subnet info
+	subnet, err := cidr.Parse(cidrStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Subnet Information for %s\n", subnet.CIDR)
+	fmt.Println("════════════════════════════════════════════════════════════════")
+	fmt.Printf("  Network:       %s\n", subnet.NetworkAddress)
+	if !subnet.IsIPv6 {
+		fmt.Printf("  Broadcast:     %s\n", subnet.BroadcastAddr)
+		fmt.Printf("  Subnet Mask:   %s\n", subnet.SubnetMask)
+		fmt.Printf("  Wildcard:      %s\n", subnet.WildcardMask)
+	}
+	fmt.Printf("  First Host:    %s\n", subnet.FirstHost)
+	fmt.Printf("  Last Host:     %s\n", subnet.LastHost)
+	fmt.Printf("  Prefix:        /%d\n", subnet.Prefix)
+	if subnet.TotalHosts > 0 {
+		fmt.Printf("  Total Hosts:   %d\n", subnet.TotalHosts)
+		fmt.Printf("  Usable Hosts:  %d\n", subnet.UsableHosts)
+	}
+}
+
+func runMAC(args []string) {
+	fs := flag.NewFlagSet("mac", flag.ExitOnError)
+
+	generateFlag := fs.Bool("generate", false, "Generate random MAC address")
+	formatFlag := fs.String("format", "colon", "Output format: colon, dash, dot, bare, upper")
+	ouiFlag := fs.String("oui", "", "Generate MAC with specific OUI")
+
+	// Short flags
+	fs.BoolVar(generateFlag, "g", false, "Generate")
+	fs.StringVar(formatFlag, "f", "colon", "Format")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns mac [MAC] [OPTIONS]
+
+MAC address utilities - lookup, format, generate.
+
+OPTIONS:
+  -g, --generate   Generate random MAC address
+  -f, --format     Output format: colon, dash, dot, bare, upper
+      --oui        Generate with specific OUI (e.g., 00:50:56)
+      --help       Show this help message
+
+EXAMPLES:
+  nns mac aa:bb:cc:dd:ee:ff       # Lookup vendor
+  nns mac --generate              # Random MAC
+  nns mac --generate --oui 00:50:56  # VMware MAC
+  nns mac aa-bb-cc-dd-ee-ff --format dot`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	// Generate MAC
+	if *generateFlag {
+		var mac string
+		if *ouiFlag != "" {
+			var err error
+			mac, err = macutil.GenerateWithOUI(*ouiFlag)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			mac = macutil.Generate(true)
+		}
+
+		formatted := macutil.Format(mac, *formatFlag)
+		info, _ := macutil.Parse(mac)
+
+		fmt.Printf("Generated MAC: %s\n", formatted)
+		if info != nil && info.Vendor != "" {
+			fmt.Printf("Vendor:        %s\n", info.Vendor)
+		}
+		if info != nil {
+			fmt.Printf("OUI:           %s\n", info.OUI)
+			if info.IsLocal {
+				fmt.Println("Type:          Locally Administered")
+			} else {
+				fmt.Println("Type:          Universally Administered")
+			}
+		}
+		return
+	}
+
+	// Lookup MAC
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: MAC address required (or use --generate)\n\n")
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	mac := fs.Arg(0)
+	info, err := macutil.Parse(mac)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	formatted := macutil.Format(mac, *formatFlag)
+
+	fmt.Printf("MAC Address Information\n")
+	fmt.Println("════════════════════════════════════════════════════════════════")
+	fmt.Printf("  MAC:           %s\n", formatted)
+	fmt.Printf("  Normalized:    %s\n", info.Normalized)
+	fmt.Printf("  OUI:           %s\n", info.OUI)
+	if info.Vendor != "" {
+		fmt.Printf("  Vendor:        %s\n", info.Vendor)
+	} else {
+		fmt.Printf("  Vendor:        Unknown\n")
+	}
+
+	macType := "Unicast"
+	if info.IsMulticast {
+		macType = "Multicast"
+	}
+	fmt.Printf("  Cast Type:     %s\n", macType)
+
+	adminType := "Universally Administered (UAA)"
+	if info.IsLocal {
+		adminType = "Locally Administered (LAA)"
+	}
+	fmt.Printf("  Admin Type:    %s\n", adminType)
+
+	if macutil.IsBroadcast(mac) {
+		fmt.Println("  Special:       Broadcast Address")
+	} else if macutil.IsZero(mac) {
+		fmt.Println("  Special:       Zero/Null Address")
+	}
 }
