@@ -57,7 +57,7 @@ func TestParseIPWhois(t *testing.T) {
 NetRange:       8.8.8.0 - 8.8.8.255
 CIDR:           8.8.8.0/24
 NetName:        GOOGLE
-Organization:   Google LLC
+OrgName:        Google LLC
 Country:        US
 RegDate:        2014-03-14
 `

@@ -16,6 +16,10 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 - **SSL Analysis** - Analyze TLS certificates with security grading (A+ to F)
 - **HTTP Client** - HTTP client with detailed timing breakdown (DNS, TLS, TTFB)
 - **Debug Proxy** - Local proxy server for debugging HTTP traffic
+- **Network Sweep** - Discover live hosts on a network (CIDR range scanning)
+- **ARP Table** - View ARP cache with MAC vendor lookup
+- **WHOIS Lookup** - Query domain and IP registration information
+- **Netstat** - Show network connections and routing tables
 
 ## Why NNS?
 
@@ -67,6 +71,18 @@ nns ssl google.com --chain
 
 # Start debugging proxy
 nns proxy --port 8080
+
+# Sweep network for live hosts
+nns sweep 192.168.1.0/24
+
+# View ARP table
+nns arp
+
+# WHOIS lookup
+nns whois google.com
+
+# Show listening ports
+nns netstat --listen
 ```
 
 ## Documentation
@@ -81,6 +97,10 @@ See the [docs](docs/) directory for detailed documentation on each command:
 - [SSL Analysis](docs/commands/ssl.md)
 - [HTTP Client](docs/commands/http.md)
 - [Proxy Server](docs/commands/proxy.md)
+- [Network Sweep](docs/commands/sweep.md)
+- [ARP Table](docs/commands/arp.md)
+- [WHOIS Lookup](docs/commands/whois.md)
+- [Netstat](docs/commands/netstat.md)
 
 ## Project Structure
 
@@ -96,7 +116,11 @@ NNS/
 │   ├── dns/          # DNS lookups
 │   ├── ssl/          # SSL/TLS analysis
 │   ├── httpclient/   # HTTP client
-│   └── proxy/        # Proxy server
+│   ├── proxy/        # Proxy server
+│   ├── sweep/        # Network sweep
+│   ├── arp/          # ARP table viewer
+│   ├── whois/        # WHOIS client
+│   └── netstat/      # Network connections
 ├── docs/             # Documentation
 └── img/              # Assets and logo
 ```
