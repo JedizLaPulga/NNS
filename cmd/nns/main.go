@@ -8,14 +8,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JedizLaPulga/NNS/internal/arp"
 	"github.com/JedizLaPulga/NNS/internal/bench"
 	"github.com/JedizLaPulga/NNS/internal/dns"
 	"github.com/JedizLaPulga/NNS/internal/httpclient"
+	"github.com/JedizLaPulga/NNS/internal/netstat"
 	"github.com/JedizLaPulga/NNS/internal/ping"
 	"github.com/JedizLaPulga/NNS/internal/portscan"
 	"github.com/JedizLaPulga/NNS/internal/proxy"
 	"github.com/JedizLaPulga/NNS/internal/ssl"
+	"github.com/JedizLaPulga/NNS/internal/sweep"
 	"github.com/JedizLaPulga/NNS/internal/traceroute"
+	"github.com/JedizLaPulga/NNS/internal/whois"
 )
 
 const version = "0.1.0"
@@ -49,6 +53,14 @@ func main() {
 		runHTTP(os.Args[2:])
 	case "proxy":
 		runProxy(os.Args[2:])
+	case "sweep":
+		runSweep(os.Args[2:])
+	case "arp":
+		runARP(os.Args[2:])
+	case "whois":
+		runWhois(os.Args[2:])
+	case "netstat":
+		runNetstat(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -73,6 +85,10 @@ COMMANDS:
     ssl          Analyze SSL/TLS certificates
     http         HTTP client with timing breakdown
     proxy        Start a local debugging proxy server
+    sweep        Discover live hosts on a network (CIDR scan)
+    arp          View ARP table with MAC vendor lookup
+    whois        WHOIS lookup for domains and IPs
+    netstat      Show network connections and routing
 
 OPTIONS:
     --version, -v    Show version information
@@ -1120,4 +1136,404 @@ func printHTTPResult(r *httpclient.Response, showTiming, showHeaders, silent boo
 	}
 
 	fmt.Println()
+}
+
+func runSweep(args []string) {
+	fs := flag.NewFlagSet("sweep", flag.ExitOnError)
+
+	timeoutFlag := fs.Duration("timeout", 1*time.Second, "Timeout per host")
+	concurrentFlag := fs.Int("concurrent", 256, "Number of concurrent workers")
+	portsFlag := fs.String("ports", "80,443,22,445,3389", "Ports to check for TCP method")
+	resolveFlag := fs.Bool("resolve", true, "Resolve hostnames")
+
+	// Short flags
+	fs.DurationVar(timeoutFlag, "t", 1*time.Second, "Timeout")
+	fs.IntVar(concurrentFlag, "c", 256, "Concurrent workers")
+	fs.StringVar(portsFlag, "p", "80,443,22,445,3389", "Ports")
+	fs.BoolVar(resolveFlag, "r", true, "Resolve hostnames")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns sweep [CIDR] [OPTIONS]
+
+Discover live hosts on a network using TCP probes.
+
+OPTIONS:
+  -t, --timeout      Timeout per host (default: 1s)
+  -c, --concurrent   Number of concurrent workers (default: 256)
+  -p, --ports        Ports to check (default: 80,443,22,445,3389)
+  -r, --resolve      Resolve hostnames (default: true)
+      --help         Show this help message
+
+EXAMPLES:
+  nns sweep 192.168.1.0/24
+  nns sweep 10.0.0.0/16 --timeout 2s
+  nns sweep 172.16.0.0/24 --ports 22,80,443,8080`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: CIDR range required\n\n")
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	cidr := fs.Arg(0)
+
+	// Parse ports
+	ports, err := portscan.ParsePortRange(*portsFlag)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing ports: %v\n", err)
+		os.Exit(1)
+	}
+
+	cfg := sweep.Config{
+		CIDR:        cidr,
+		Timeout:     *timeoutFlag,
+		Concurrency: *concurrentFlag,
+		Method:      "tcp",
+		Ports:       ports,
+		Resolve:     *resolveFlag,
+	}
+
+	sweeper := sweep.NewSweeper(cfg)
+
+	// Count hosts
+	hostCount, _ := sweep.CountHosts(cidr)
+	fmt.Printf("Sweeping %s (%d hosts)...\n\n", cidr, hostCount)
+
+	fmt.Printf("%-16s %-8s %-30s %s\n", "IP", "PORT", "HOSTNAME", "LATENCY")
+	fmt.Println("────────────────────────────────────────────────────────────────")
+
+	ctx := context.Background()
+	aliveCount := 0
+
+	results, err := sweeper.Sweep(ctx, func(r sweep.HostResult) {
+		aliveCount++
+		hostname := r.Hostname
+		if hostname == "" {
+			hostname = "-"
+		}
+		if len(hostname) > 28 {
+			hostname = hostname[:25] + "..."
+		}
+		fmt.Printf("%-16s %-8d %-30s %v\n", r.IP, r.Port, hostname, r.Latency.Round(time.Millisecond))
+	})
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("\n────────────────────────────────────────────────────────────────\n")
+	fmt.Printf("Scan complete: %d/%d hosts alive\n", aliveCount, len(results))
+}
+
+func runARP(args []string) {
+	fs := flag.NewFlagSet("arp", flag.ExitOnError)
+
+	interfaceFlag := fs.String("interface", "", "Filter by interface")
+	vendorFlag := fs.Bool("vendor", true, "Show MAC vendor")
+
+	// Short flags
+	fs.StringVar(interfaceFlag, "i", "", "Interface filter")
+	fs.BoolVar(vendorFlag, "v", true, "Show vendor")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns arp [OPTIONS]
+
+View the system ARP table with MAC vendor lookup.
+
+OPTIONS:
+  -i, --interface    Filter by network interface
+  -v, --vendor       Show MAC vendor (default: true)
+      --help         Show this help message
+
+EXAMPLES:
+  nns arp
+  nns arp --interface eth0`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	entries, err := arp.GetTable()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Filter by interface
+	if *interfaceFlag != "" {
+		entries = arp.FilterByInterface(entries, *interfaceFlag)
+	}
+
+	if len(entries) == 0 {
+		fmt.Println("No ARP entries found")
+		return
+	}
+
+	// Print header
+	if *vendorFlag {
+		fmt.Printf("%-16s %-20s %-12s %-15s %s\n", "IP", "MAC", "INTERFACE", "TYPE", "VENDOR")
+	} else {
+		fmt.Printf("%-16s %-20s %-12s %s\n", "IP", "MAC", "INTERFACE", "TYPE")
+	}
+	fmt.Println("────────────────────────────────────────────────────────────────────────────")
+
+	for _, e := range entries {
+		if *vendorFlag {
+			vendor := e.Vendor
+			if vendor == "" {
+				vendor = "-"
+			}
+			fmt.Printf("%-16s %-20s %-12s %-15s %s\n", e.IP, e.MAC, e.Interface, e.Type, vendor)
+		} else {
+			fmt.Printf("%-16s %-20s %-12s %s\n", e.IP, e.MAC, e.Interface, e.Type)
+		}
+	}
+
+	fmt.Printf("\nTotal: %d entries\n", len(entries))
+}
+
+func runWhois(args []string) {
+	fs := flag.NewFlagSet("whois", flag.ExitOnError)
+
+	rawFlag := fs.Bool("raw", false, "Show raw WHOIS response")
+	serverFlag := fs.String("server", "", "Custom WHOIS server")
+	timeoutFlag := fs.Duration("timeout", 10*time.Second, "Query timeout")
+
+	// Short flags
+	fs.StringVar(serverFlag, "s", "", "WHOIS server")
+	fs.DurationVar(timeoutFlag, "t", 10*time.Second, "Timeout")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns whois [TARGET] [OPTIONS]
+
+WHOIS lookup for domains and IP addresses.
+
+OPTIONS:
+  -s, --server    Custom WHOIS server
+  -t, --timeout   Query timeout (default: 10s)
+      --raw       Show raw WHOIS response
+      --help      Show this help message
+
+EXAMPLES:
+  nns whois google.com
+  nns whois 8.8.8.8
+  nns whois amazon.com --raw`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: domain or IP required\n\n")
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	target := fs.Arg(0)
+
+	client := whois.NewClient()
+	client.Timeout = *timeoutFlag
+	if *serverFlag != "" {
+		client.Server = *serverFlag
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeoutFlag)
+	defer cancel()
+
+	result, err := client.Lookup(ctx, target)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if *rawFlag {
+		fmt.Println(result.Raw)
+		return
+	}
+
+	// Pretty print
+	fmt.Printf("WHOIS for %s (%s)\n", target, result.Type)
+	fmt.Println("════════════════════════════════════════════════════════════════")
+
+	if result.Type == "domain" {
+		if result.Registrar != "" {
+			fmt.Printf("  Registrar:      %s\n", result.Registrar)
+		}
+		if result.Organization != "" {
+			fmt.Printf("  Organization:   %s\n", result.Organization)
+		}
+		if result.CreatedDate != "" {
+			fmt.Printf("  Created:        %s\n", result.CreatedDate)
+		}
+		if result.UpdatedDate != "" {
+			fmt.Printf("  Updated:        %s\n", result.UpdatedDate)
+		}
+		if result.ExpiresDate != "" {
+			fmt.Printf("  Expires:        %s\n", result.ExpiresDate)
+			days := result.DaysUntilExpiry()
+			if days >= 0 {
+				if days < 30 {
+					fmt.Printf("                  ⚠ Expires in %d days!\n", days)
+				} else {
+					fmt.Printf("                  (%d days remaining)\n", days)
+				}
+			}
+		}
+		if result.Country != "" {
+			fmt.Printf("  Country:        %s\n", result.Country)
+		}
+		if len(result.NameServers) > 0 {
+			fmt.Printf("  Name Servers:\n")
+			for _, ns := range result.NameServers {
+				fmt.Printf("                  %s\n", ns)
+			}
+		}
+	} else {
+		// IP WHOIS
+		if result.Organization != "" {
+			fmt.Printf("  Organization:   %s\n", result.Organization)
+		}
+		if result.NetName != "" {
+			fmt.Printf("  Network Name:   %s\n", result.NetName)
+		}
+		if result.NetRange != "" {
+			fmt.Printf("  Net Range:      %s\n", result.NetRange)
+		}
+		if result.CIDR != "" {
+			fmt.Printf("  CIDR:           %s\n", result.CIDR)
+		}
+		if result.Country != "" {
+			fmt.Printf("  Country:        %s\n", result.Country)
+		}
+	}
+
+	fmt.Printf("\n  Server:         %s\n", result.Server)
+	fmt.Printf("  Query Time:     %v\n", result.Duration.Round(time.Millisecond))
+}
+
+func runNetstat(args []string) {
+	fs := flag.NewFlagSet("netstat", flag.ExitOnError)
+
+	tcpFlag := fs.Bool("tcp", false, "Show TCP only")
+	udpFlag := fs.Bool("udp", false, "Show UDP only")
+	listenFlag := fs.Bool("listen", false, "Show listening only")
+	allFlag := fs.Bool("all", false, "Show all connections")
+	pidFlag := fs.Bool("pid", false, "Show process IDs (requires admin)")
+	routingFlag := fs.Bool("routing", false, "Show routing table")
+
+	// Short flags
+	fs.BoolVar(tcpFlag, "t", false, "TCP only")
+	fs.BoolVar(udpFlag, "u", false, "UDP only")
+	fs.BoolVar(listenFlag, "l", false, "Listening only")
+	fs.BoolVar(allFlag, "a", false, "All connections")
+	fs.BoolVar(pidFlag, "p", false, "Show PIDs")
+	fs.BoolVar(routingFlag, "r", false, "Routing table")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns netstat [OPTIONS]
+
+Show network connections and routing information.
+
+OPTIONS:
+  -t, --tcp       Show TCP connections only
+  -u, --udp       Show UDP connections only
+  -l, --listen    Show listening ports only
+  -a, --all       Show all connections
+  -p, --pid       Show process IDs (requires admin)
+  -r, --routing   Show routing table instead of connections
+      --help      Show this help message
+
+EXAMPLES:
+  nns netstat
+  nns netstat --listen
+  nns netstat --tcp --pid
+  nns netstat --routing`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	// Show routing table
+	if *routingFlag {
+		routes, err := netstat.GetRoutingTable()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("%-18s %-18s %-18s %-12s %s\n", "DESTINATION", "GATEWAY", "MASK", "INTERFACE", "METRIC")
+		fmt.Println("────────────────────────────────────────────────────────────────────────────────")
+
+		for _, r := range routes {
+			mask := r.Mask
+			if mask == "" {
+				mask = "-"
+			}
+			fmt.Printf("%-18s %-18s %-18s %-12s %d\n", r.Destination, r.Gateway, mask, r.Interface, r.Metric)
+		}
+
+		fmt.Printf("\nTotal: %d routes\n", len(routes))
+		return
+	}
+
+	// Show connections
+	conns, err := netstat.GetConnections(*pidFlag)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Apply filters
+	if *tcpFlag {
+		conns = netstat.FilterByProtocol(conns, "tcp")
+	} else if *udpFlag {
+		conns = netstat.FilterByProtocol(conns, "udp")
+	}
+
+	if *listenFlag {
+		conns = netstat.GetListening(conns)
+	}
+
+	if len(conns) == 0 {
+		fmt.Println("No connections found")
+		return
+	}
+
+	// Print header
+	if *pidFlag {
+		fmt.Printf("%-8s %-25s %-25s %-15s %s\n", "PROTO", "LOCAL", "REMOTE", "STATE", "PID")
+	} else {
+		fmt.Printf("%-8s %-25s %-25s %s\n", "PROTO", "LOCAL", "REMOTE", "STATE")
+	}
+	fmt.Println("────────────────────────────────────────────────────────────────────────────────")
+
+	for _, c := range conns {
+		local := fmt.Sprintf("%s:%d", c.LocalAddr, c.LocalPort)
+		remote := fmt.Sprintf("%s:%d", c.RemoteAddr, c.RemotePort)
+		if c.RemoteAddr == "" || c.RemotePort == 0 {
+			remote = "*:*"
+		}
+
+		state := c.State
+		if state == "" {
+			state = "-"
+		}
+
+		if *pidFlag {
+			fmt.Printf("%-8s %-25s %-25s %-15s %d\n", c.Protocol, local, remote, state, c.PID)
+		} else {
+			fmt.Printf("%-8s %-25s %-25s %s\n", c.Protocol, local, remote, state)
+		}
+	}
+
+	fmt.Printf("\nTotal: %d connections\n", len(conns))
 }
