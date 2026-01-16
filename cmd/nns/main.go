@@ -61,6 +61,16 @@ func main() {
 		runWhois(os.Args[2:])
 	case "netstat":
 		runNetstat(os.Args[2:])
+	case "wol":
+		runWOL(os.Args[2:])
+	case "headers":
+		runHeaders(os.Args[2:])
+	case "ipinfo":
+		runIPInfo(os.Args[2:])
+	case "cidr":
+		runCIDR(os.Args[2:])
+	case "mac":
+		runMAC(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
