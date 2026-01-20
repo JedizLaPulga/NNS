@@ -106,9 +106,9 @@ func TestInterfaceFields(t *testing.T) {
 			t.Errorf("Interface %s has invalid index: %d", iface.Name, iface.Index)
 		}
 
-		// MTU should be reasonable
-		if iface.MTU < 0 {
-			t.Errorf("Interface %s has negative MTU: %d", iface.Name, iface.MTU)
+		// MTU should be reasonable (Windows loopback may report -1)
+		if iface.MTU < -1 {
+			t.Errorf("Interface %s has invalid MTU: %d", iface.Name, iface.MTU)
 		}
 
 		// Flags should be set

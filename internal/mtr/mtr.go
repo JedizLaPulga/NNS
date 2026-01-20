@@ -84,7 +84,7 @@ func New(cfg Config) *MTR {
 		cfg.Interval = 1 * time.Second
 	}
 
-	return &MTR{
+	m := &MTR{
 		cfg: cfg,
 		pid: os.Getpid() & 0xffff,
 		result: &Result{
@@ -93,6 +93,17 @@ func New(cfg Config) *MTR {
 			StartTime: time.Now(),
 		},
 	}
+
+	// Initialize hops
+	for i := 0; i < cfg.MaxHops; i++ {
+		m.result.Hops[i] = &HopStats{
+			TTL:     i + 1,
+			AllRTTs: make([]time.Duration, 0),
+			MinRTT:  time.Hour,
+		}
+	}
+
+	return m
 }
 
 // Run executes the MTR and calls callback after each cycle.
