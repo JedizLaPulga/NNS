@@ -115,15 +115,6 @@ func (m *MTR) Run(ctx context.Context, callback func(*Result)) error {
 	}
 	m.result.ResolvedIP = dst.String()
 
-	// Initialize hops
-	for i := 0; i < m.cfg.MaxHops; i++ {
-		m.result.Hops[i] = &HopStats{
-			TTL:     i + 1,
-			AllRTTs: make([]time.Duration, 0),
-			MinRTT:  time.Hour, // Will be updated
-		}
-	}
-
 	// Open ICMP connection
 	conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	if err != nil {
