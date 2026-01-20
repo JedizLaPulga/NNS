@@ -14,12 +14,16 @@ import (
 	"github.com/JedizLaPulga/NNS/internal/dns"
 	"github.com/JedizLaPulga/NNS/internal/headers"
 	"github.com/JedizLaPulga/NNS/internal/httpclient"
+	"github.com/JedizLaPulga/NNS/internal/interfaces"
 	"github.com/JedizLaPulga/NNS/internal/ipinfo"
 	"github.com/JedizLaPulga/NNS/internal/macutil"
+	"github.com/JedizLaPulga/NNS/internal/mtr"
 	"github.com/JedizLaPulga/NNS/internal/netstat"
+	"github.com/JedizLaPulga/NNS/internal/netwatch"
 	"github.com/JedizLaPulga/NNS/internal/ping"
 	"github.com/JedizLaPulga/NNS/internal/portscan"
 	"github.com/JedizLaPulga/NNS/internal/proxy"
+	"github.com/JedizLaPulga/NNS/internal/speedtest"
 	"github.com/JedizLaPulga/NNS/internal/ssl"
 	"github.com/JedizLaPulga/NNS/internal/sweep"
 	"github.com/JedizLaPulga/NNS/internal/traceroute"
@@ -76,6 +80,14 @@ func main() {
 		runCIDR(os.Args[2:])
 	case "mac":
 		runMAC(os.Args[2:])
+	case "mtr":
+		runMTR(os.Args[2:])
+	case "interfaces", "ifaces":
+		runInterfaces(os.Args[2:])
+	case "speedtest":
+		runSpeedtest(os.Args[2:])
+	case "netwatch":
+		runNetwatch(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -94,6 +106,7 @@ USAGE:
 COMMANDS:
     ping         Send ICMP echo requests to a host
     traceroute   Trace the network path to a host
+    mtr          My TraceRoute - continuous ping + traceroute
     portscan     Scan ports on a target host or network
     bench        Benchmark HTTP endpoints
     dns          Perform DNS lookups (A, MX, TXT, etc.)
@@ -109,6 +122,9 @@ COMMANDS:
     ipinfo       IP geolocation and ASN lookup
     cidr         CIDR/subnet calculator
     mac          MAC address utilities
+    interfaces   List network interfaces with details
+    speedtest    Bandwidth speed test
+    netwatch     Monitor network changes in real-time
 
 OPTIONS:
     --version, -v    Show version information
@@ -123,7 +139,9 @@ EXAMPLES:
     nns dns google.com --type MX
     nns ssl google.com --chain
     nns http https://api.example.com --timing
-    nns proxy --port 8080
+    nns mtr google.com --count 10
+    nns interfaces --active
+    nns speedtest
 `
 	fmt.Print(help)
 }
@@ -2018,4 +2036,327 @@ EXAMPLES:
 	} else if macutil.IsZero(mac) {
 		fmt.Println("  Special:       Zero/Null Address")
 	}
+}
+
+func runMTR(args []string) {
+	fs := flag.NewFlagSet("mtr", flag.ExitOnError)
+
+	countFlag := fs.Int("count", 10, "Number of cycles to run")
+	maxHopsFlag := fs.Int("max-hops", 30, "Maximum hops")
+	timeoutFlag := fs.Duration("timeout", 2*time.Second, "Timeout per probe")
+	intervalFlag := fs.Duration("interval", 1*time.Second, "Time between cycles")
+	noResolveFlag := fs.Bool("no-resolve", false, "Don't resolve hostnames")
+
+	fs.IntVar(countFlag, "c", 10, "Number of cycles")
+	fs.IntVar(maxHopsFlag, "m", 30, "Maximum hops")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns mtr [HOST] [OPTIONS]
+
+My TraceRoute - combines ping and traceroute for real-time path analysis.
+Shows packet loss and latency statistics for each hop (requires admin/root).
+
+OPTIONS:
+  -c, --count       Number of cycles to run (default: 10)
+  -m, --max-hops    Maximum hops (default: 30)
+  --timeout         Timeout per probe (default: 2s)
+  --interval        Time between cycles (default: 1s)
+  --no-resolve      Don't resolve hostnames
+  --help            Show this help message
+
+EXAMPLES:
+  nns mtr google.com
+  nns mtr -c 5 example.com
+  nns mtr --no-resolve 8.8.8.8`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if fs.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: target host required\n\n")
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	target := fs.Arg(0)
+
+	cfg := mtr.Config{
+		Target:      target,
+		MaxHops:     *maxHopsFlag,
+		Timeout:     *timeoutFlag,
+		Interval:    *intervalFlag,
+		Count:       *countFlag,
+		ResolveHost: !*noResolveFlag,
+	}
+
+	m := mtr.New(cfg)
+
+	fmt.Printf("MTR to %s, %d cycles, %d hops max\n", target, cfg.Count, cfg.MaxHops)
+	fmt.Println()
+
+	err := m.Run(context.Background(), func(result *mtr.Result) {
+		// Clear and redisplay (simple approach)
+		fmt.Printf("\r%-3s %-16s %-25s %6s %8s %8s %8s %8s\n",
+			"HOP", "IP", "HOST", "LOSS%", "SENT", "AVG", "BEST", "WORST")
+		fmt.Println("--------------------------------------------------------------------------------------------")
+
+		for _, hop := range result.GetActiveHops() {
+			hostname := hop.Hostname
+			if hostname == "" {
+				hostname = "-"
+			}
+			if len(hostname) > 24 {
+				hostname = hostname[:21] + "..."
+			}
+
+			fmt.Printf("%-3d %-16s %-25s %5.1f%% %8d %8v %8v %8v\n",
+				hop.TTL, hop.IP, hostname,
+				hop.LossPercent, hop.Sent,
+				hop.AvgRTT.Round(time.Microsecond*100),
+				hop.MinRTT.Round(time.Microsecond*100),
+				hop.MaxRTT.Round(time.Microsecond*100))
+		}
+		fmt.Println()
+	})
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func runInterfaces(args []string) {
+	fs := flag.NewFlagSet("interfaces", flag.ExitOnError)
+
+	activeFlag := fs.Bool("active", false, "Show only active (up) interfaces")
+	nameFlag := fs.String("name", "", "Show specific interface by name")
+
+	fs.BoolVar(activeFlag, "a", false, "Show only active interfaces")
+	fs.StringVar(nameFlag, "n", "", "Interface name")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns interfaces [OPTIONS]
+
+List network interfaces with detailed information.
+
+OPTIONS:
+  -a, --active      Show only active (up) interfaces
+  -n, --name        Show specific interface by name
+  --help            Show this help message
+
+EXAMPLES:
+  nns interfaces
+  nns interfaces --active
+  nns interfaces --name eth0`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	var ifaces []interfaces.Interface
+	var err error
+
+	if *nameFlag != "" {
+		iface, err := interfaces.GetByName(*nameFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		ifaces = []interfaces.Interface{*iface}
+	} else if *activeFlag {
+		ifaces, err = interfaces.ListActive()
+	} else {
+		ifaces, err = interfaces.ListAll()
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Found %d interface(s)\n\n", len(ifaces))
+
+	for _, iface := range ifaces {
+		status := "DOWN"
+		if iface.IsUp {
+			status = "UP"
+		}
+
+		flags := []string{}
+		if iface.IsLoopback {
+			flags = append(flags, "loopback")
+		}
+		if iface.IsMulticast {
+			flags = append(flags, "multicast")
+		}
+		if iface.IsBroadcast {
+			flags = append(flags, "broadcast")
+		}
+		if interfaces.IsVirtual(iface) {
+			flags = append(flags, "virtual")
+		}
+
+		fmt.Printf("%s [%s]:\n", iface.Name, status)
+		fmt.Printf("  Index: %d, MTU: %d\n", iface.Index, iface.MTU)
+		if iface.HardwareAddr != "" {
+			fmt.Printf("  MAC: %s\n", iface.HardwareAddr)
+		}
+		if len(flags) > 0 {
+			fmt.Printf("  Flags: %s\n", strings.Join(flags, ", "))
+		}
+		if len(iface.IPv4Addrs) > 0 {
+			fmt.Printf("  IPv4: %s\n", strings.Join(iface.IPv4Addrs, ", "))
+		}
+		if len(iface.IPv6Addrs) > 0 {
+			fmt.Printf("  IPv6: %s\n", strings.Join(iface.IPv6Addrs, ", "))
+		}
+		fmt.Println()
+	}
+
+	// Show default gateway interface
+	if defIface, err := interfaces.GetDefaultGatewayInterface(); err == nil {
+		fmt.Printf("Default Gateway Interface: %s\n", defIface.Name)
+	}
+}
+
+func runSpeedtest(args []string) {
+	fs := flag.NewFlagSet("speedtest", flag.ExitOnError)
+
+	urlFlag := fs.String("url", "", "Custom download URL for testing")
+	timeoutFlag := fs.Duration("timeout", 60*time.Second, "Test timeout")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns speedtest [OPTIONS]
+
+Perform a network speed test (download bandwidth).
+
+OPTIONS:
+  --url             Custom download URL for testing
+  --timeout         Test timeout (default: 60s)
+  --help            Show this help message
+
+EXAMPLES:
+  nns speedtest
+  nns speedtest --url http://speedtest.example.com/100MB.bin`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	cfg := speedtest.DefaultConfig()
+	if *urlFlag != "" {
+		cfg.DownloadURL = *urlFlag
+	}
+	cfg.Timeout = *timeoutFlag
+
+	tester := speedtest.NewTester(cfg)
+
+	fmt.Println("Starting speed test...")
+	fmt.Printf("Server: %s\n\n", cfg.DownloadURL)
+
+	ctx := context.Background()
+
+	result, err := tester.Run(ctx, func(stage string, progress float64) {
+		switch stage {
+		case "latency":
+			fmt.Print("Testing latency... ")
+		case "download":
+			fmt.Printf("\rDownloading: %.0f%%", progress)
+		case "complete":
+			fmt.Println()
+		}
+	})
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("\n--- Results ---")
+	fmt.Printf("Latency:         %v\n", result.Latency)
+	fmt.Printf("Download Speed:  %s\n", speedtest.FormatSpeed(result.DownloadSpeed))
+	fmt.Printf("Downloaded:      %s in %v\n", speedtest.FormatBytes(result.DownloadBytes), result.DownloadTime.Round(time.Millisecond))
+
+	if result.UploadSpeed > 0 {
+		fmt.Printf("Upload Speed:    %s\n", speedtest.FormatSpeed(result.UploadSpeed))
+	}
+}
+
+func runNetwatch(args []string) {
+	fs := flag.NewFlagSet("netwatch", flag.ExitOnError)
+
+	intervalFlag := fs.Duration("interval", 5*time.Second, "Poll interval")
+	hostFlag := fs.String("host", "", "Additional host to monitor")
+	durationFlag := fs.Duration("duration", 0, "How long to monitor (0 = until Ctrl+C)")
+
+	fs.DurationVar(intervalFlag, "i", 5*time.Second, "Poll interval")
+	fs.StringVar(hostFlag, "H", "", "Host to monitor")
+	fs.DurationVar(durationFlag, "d", 0, "Duration")
+
+	fs.Usage = func() {
+		fmt.Println(`Usage: nns netwatch [OPTIONS]
+
+Monitor network changes in real-time (interface up/down, address changes, connectivity).
+
+OPTIONS:
+  -i, --interval    Poll interval (default: 5s)
+  -H, --host        Additional host to monitor
+  -d, --duration    How long to monitor (0 = until Ctrl+C)
+  --help            Show this help message
+
+EXAMPLES:
+  nns netwatch
+  nns netwatch --interval 10s --host google.com
+  nns netwatch --duration 5m`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	cfg := netwatch.Config{
+		PollInterval:          *intervalFlag,
+		ConnectivityCheckHost: "8.8.8.8",
+		LatencyThreshold:      500 * time.Millisecond,
+	}
+
+	if *hostFlag != "" {
+		cfg.MonitoredHosts = []string{*hostFlag}
+	}
+
+	watcher := netwatch.NewWatcher(cfg)
+
+	ctx := context.Background()
+	if *durationFlag > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *durationFlag)
+		defer cancel()
+	}
+
+	fmt.Printf("Watching for network changes (poll interval: %v)...\n", cfg.PollInterval)
+	fmt.Println("Press Ctrl+C to stop.\n")
+
+	// Show initial state
+	ifaces, hosts, connected := watcher.GetCurrentState()
+	fmt.Printf("Initial state: %d interfaces, connectivity: %v\n", len(ifaces), connected)
+	for host, state := range hosts {
+		status := "unreachable"
+		if state.IsReachable {
+			status = "reachable"
+		}
+		fmt.Printf("  - %s: %s\n", host, status)
+	}
+	fmt.Println()
+
+	events := watcher.Watch(ctx)
+
+	for event := range events {
+		fmt.Println(netwatch.FormatEvent(event))
+	}
+
+	fmt.Println("\nNetwatch stopped.")
 }
