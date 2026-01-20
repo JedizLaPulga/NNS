@@ -313,28 +313,43 @@ func nextSubnet(ip net.IP, prefix, bits int) net.IP {
 	next := make(net.IP, len(ip))
 	copy(next, ip)
 
-	// Calculate increment
-	byteIndex := prefix / 8
-	bitOffset := uint(prefix % 8)
+	// Calculate the size of one subnet in addresses: 2^(bits - prefix)
+	// For IPv4 /26: 2^(32-26) = 64 addresses per subnet
+	hostBits := uint(bits - prefix)
 
-	if byteIndex >= len(next) {
+	// Find which byte(s) to increment
+	// The least significant bit of the network portion is at bit position (prefix-1)
+	// from the left, or equivalently, at bit position (bits - prefix) from the right.
+	// We need to add 2^hostBits to the IP address.
+
+	// Convert to 4-byte representation for IPv4
+	ip4 := next.To4()
+	if ip4 != nil {
+		next = ip4
+	}
+
+	// Calculate which byte and bit to start from
+	// hostBits tells us how many bits are in the host portion
+	// The network boundary is at byte (bits - hostBits) / 8 from the perspective of incrementing
+	incrementByteFromEnd := int(hostBits / 8)
+	incrementBit := hostBits % 8
+
+	startByte := len(next) - 1 - incrementByteFromEnd
+
+	if startByte < 0 || startByte >= len(next) {
 		return next
 	}
 
-	// Add to the appropriate byte
-	increment := byte(1 << (7 - bitOffset))
-	carry := true
+	// Increment value for this byte
+	increment := uint16(1 << incrementBit)
 
-	for i := byteIndex; i >= 0 && carry; i-- {
-		sum := int(next[i]) + int(increment)
-		if sum > 255 {
-			next[i] = byte(sum - 256)
-			carry = true
-		} else {
-			next[i] = byte(sum)
-			carry = false
+	for i := startByte; i >= 0; i-- {
+		sum := uint16(next[i]) + increment
+		next[i] = byte(sum & 0xFF)
+		increment = sum >> 8 // carry
+		if increment == 0 {
+			break
 		}
-		increment = 1
 	}
 
 	return next
