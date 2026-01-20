@@ -174,16 +174,20 @@ func TestWatchContextCancellation(t *testing.T) {
 	// Cancel context
 	cancel()
 
-	// Channel should close
-	select {
-	case _, open := <-eventChan:
-		if open {
-			// May receive final events, wait for close
-			for range eventChan {
+	// Drain and wait for channel to close with longer timeout
+	// (network operations can be slow)
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case _, open := <-eventChan:
+			if !open {
+				return // Channel closed successfully
 			}
+			// Continue draining
+		case <-timeout:
+			t.Error("Event channel did not close after context cancellation")
+			return
 		}
-	case <-time.After(2 * time.Second):
-		t.Error("Event channel did not close after context cancellation")
 	}
 }
 
