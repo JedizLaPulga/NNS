@@ -2338,7 +2338,7 @@ EXAMPLES:
 	}
 
 	fmt.Printf("Watching for network changes (poll interval: %v)...\n", cfg.PollInterval)
-	fmt.Println("Press Ctrl+C to stop.\n")
+	fmt.Println("Press Ctrl+C to stop.")
 
 	// Show initial state
 	ifaces, hosts, connected := watcher.GetCurrentState()
