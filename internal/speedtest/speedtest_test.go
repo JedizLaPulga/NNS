@@ -2,6 +2,7 @@ package speedtest
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -366,12 +367,15 @@ func TestContextCancellation(t *testing.T) {
 }
 
 func TestQuickTest(t *testing.T) {
-	data := strings.Repeat("X", 1024)
+	// Use larger data for more reliable timing measurement
+	data := strings.Repeat("X", 1024*100) // 100KB
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
-			w.Header().Set("Content-Length", "1024")
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
 			return
 		}
+		// Small delay to ensure measurable duration
+		time.Sleep(10 * time.Millisecond)
 		w.Write([]byte(data))
 	}))
 	defer server.Close()
@@ -383,11 +387,17 @@ func TestQuickTest(t *testing.T) {
 		t.Fatalf("QuickTest() error: %v", err)
 	}
 
+	// With 100KB and at least 10ms delay, speed should be measurable
 	if result.DownloadSpeed <= 0 {
-		t.Error("DownloadSpeed should be positive")
+		t.Errorf("DownloadSpeed should be positive, got: %v (bytes: %d, time: %v)",
+			result.DownloadSpeed, result.DownloadBytes, result.DownloadTime)
 	}
 
-	if result.DownloadBytes != 1024 {
-		t.Errorf("DownloadBytes = %d, want 1024", result.DownloadBytes)
+	if result.DownloadBytes != int64(len(data)) {
+		t.Errorf("DownloadBytes = %d, want %d", result.DownloadBytes, len(data))
+	}
+
+	if result.DownloadTime < 10*time.Millisecond {
+		t.Logf("Warning: DownloadTime very short: %v", result.DownloadTime)
 	}
 }
