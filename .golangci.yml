@@ -1,0 +1,39 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Go vet checks
+    - ineffassign   # Detect ineffective assignments
+    - staticcheck   # Static analysis
+    - unused        # Check for unused code
+    - gofmt         # Formatting
+    - goimports     # Import organization
+    - misspell      # Catch spelling errors
+    - unconvert     # Remove unnecessary conversions
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+  govet:
+    enable-all: true
+    disable:
+      - shadow  # Too noisy for CLI code
+  goimports:
+    local-prefixes: github.com/JedizLaPulga/NNS
+
+issues:
+  exclude-rules:
+    # Ignore certain issues in tests
+    - path: _test\.go
+      linters:
+        - errcheck
+        - govet
+    # Ignore long lines in help text
+    - path: cmd/nns/
+      text: "line is \\d+ characters"
+  max-issues-per-linter: 50
+  max-same-issues: 10

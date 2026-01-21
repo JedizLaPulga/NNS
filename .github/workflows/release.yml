@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Run tests
+        run: go test -v -race ./...
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          
+          # Linux amd64
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${VERSION}" -o nns-linux-amd64 ./cmd/nns
+          
+          # Linux arm64
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X main.version=${VERSION}" -o nns-linux-arm64 ./cmd/nns
+          
+          # macOS amd64
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.version=${VERSION}" -o nns-darwin-amd64 ./cmd/nns
+          
+          # macOS arm64 (Apple Silicon)
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.version=${VERSION}" -o nns-darwin-arm64 ./cmd/nns
+          
+          # Windows amd64
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${VERSION}" -o nns-windows-amd64.exe ./cmd/nns
+
+      - name: Create checksums
+        run: |
+          sha256sum nns-* > checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            nns-linux-amd64
+            nns-linux-arm64
+            nns-darwin-amd64
+            nns-darwin-arm64
+            nns-windows-amd64.exe
+            checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
