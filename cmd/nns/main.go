@@ -3,9 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 )
 
-const version = "0.1.0"
+// Build-time variables (injected via -ldflags)
+var (
+	version = "dev"     // -X main.version=v1.0.0
+	commit  = "none"    // -X main.commit=$(git rev-parse --short HEAD)
+	date    = "unknown" // -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+)
 
 func main() {
 	if len(os.Args) < 2 {
@@ -17,7 +23,8 @@ func main() {
 
 	switch command {
 	case "--version", "-v":
-		fmt.Printf("nns version %s\n", version)
+		printVersion()
+
 	case "--help", "-h", "help":
 		printHelp()
 	case "ping":
@@ -118,4 +125,16 @@ EXAMPLES:
     nns speedtest
 `
 	fmt.Print(help)
+}
+
+func printVersion() {
+	fmt.Printf("nns version %s\n", version)
+	if commit != "none" {
+		fmt.Printf("  commit:  %s\n", commit)
+	}
+	if date != "unknown" {
+		fmt.Printf("  built:   %s\n", date)
+	}
+	fmt.Printf("  go:      %s\n", runtime.Version())
+	fmt.Printf("  os/arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 }
