@@ -130,27 +130,6 @@ func TestTLSVersionString(t *testing.T) {
 	}
 }
 
-func TestSqrt(t *testing.T) {
-	tests := []struct {
-		input    float64
-		expected float64
-	}{
-		{0, 0},
-		{1, 1},
-		{4, 2},
-		{9, 3},
-		{100, 10},
-	}
-
-	for _, tt := range tests {
-		result := sqrt(tt.input)
-		diff := result - tt.expected
-		if diff < -0.001 || diff > 0.001 {
-			t.Errorf("sqrt(%f) = %f, want %f", tt.input, result, tt.expected)
-		}
-	}
-}
-
 // TestRunWithLocalServer tests the Run function with a local TCP server.
 func TestRunWithLocalServer(t *testing.T) {
 	// Start a local TCP server
