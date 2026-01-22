@@ -73,6 +73,8 @@ func main() {
 		runTCPTest(os.Args[2:])
 	case "bwmon":
 		runBWMon(os.Args[2:])
+	case "services":
+		runServices(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -112,6 +114,7 @@ COMMANDS:
     netwatch     Monitor network changes in real-time
     tcptest      TCP connectivity test with timing breakdown
     bwmon        Real-time bandwidth monitor
+    services     Service detection via banner grabbing
 
 OPTIONS:
     --version, -v    Show version information
