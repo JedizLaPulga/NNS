@@ -71,6 +71,8 @@ func main() {
 		runNetwatch(os.Args[2:])
 	case "tcptest":
 		runTCPTest(os.Args[2:])
+	case "bwmon":
+		runBWMon(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -109,6 +111,7 @@ COMMANDS:
     speedtest    Bandwidth speed test
     netwatch     Monitor network changes in real-time
     tcptest      TCP connectivity test with timing breakdown
+    bwmon        Real-time bandwidth monitor
 
 OPTIONS:
     --version, -v    Show version information
