@@ -240,31 +240,28 @@ func FormatBytes(bytes uint64) string {
 }
 
 // SimulatedStats returns simulated interface statistics for demo/testing.
+// Byte counts are strictly cumulative (monotonically increasing).
 func SimulatedStats(iteration int) []InterfaceStats {
 	base := time.Now()
 
-	// Simulate consistent cumulative traffic (monotonically increasing)
-	// Add some variation to the rate by using a base + variable component
-	baseRxRate := uint64(150000) // ~150 KB per iteration
-	baseTxRate := uint64(75000)  // ~75 KB per iteration
-
-	// Add small variations without causing the cumulative to decrease
-	variableRx := uint64((iteration % 7) * 10000)
-	variableTx := uint64((iteration % 5) * 5000)
+	// Fixed rates per iteration - simple multiplication ensures monotonic increase
+	const eth0RxRate = uint64(200000) // 200 KB per iteration
+	const eth0TxRate = uint64(100000) // 100 KB per iteration
+	const loRate = uint64(10000)      // 10 KB per iteration
 
 	return []InterfaceStats{
 		{
 			Name:      "eth0",
-			RxBytes:   uint64(iteration) * (baseRxRate + variableRx),
-			TxBytes:   uint64(iteration) * (baseTxRate + variableTx),
-			RxPackets: uint64(iteration) * 1000,
-			TxPackets: uint64(iteration) * 500,
+			RxBytes:   uint64(iteration) * eth0RxRate,
+			TxBytes:   uint64(iteration) * eth0TxRate,
+			RxPackets: uint64(iteration) * 1500,
+			TxPackets: uint64(iteration) * 800,
 			Timestamp: base,
 		},
 		{
 			Name:      "lo",
-			RxBytes:   uint64(iteration) * 10000,
-			TxBytes:   uint64(iteration) * 10000,
+			RxBytes:   uint64(iteration) * loRate,
+			TxBytes:   uint64(iteration) * loRate,
 			RxPackets: uint64(iteration) * 100,
 			TxPackets: uint64(iteration) * 100,
 			Timestamp: base,
