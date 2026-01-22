@@ -243,15 +243,20 @@ func FormatBytes(bytes uint64) string {
 func SimulatedStats(iteration int) []InterfaceStats {
 	base := time.Now()
 
-	// Simulate varying traffic patterns
-	rxMultiplier := uint64(100000 + (iteration%10)*50000)
-	txMultiplier := uint64(50000 + (iteration%5)*25000)
+	// Simulate consistent cumulative traffic (monotonically increasing)
+	// Add some variation to the rate by using a base + variable component
+	baseRxRate := uint64(150000) // ~150 KB per iteration
+	baseTxRate := uint64(75000)  // ~75 KB per iteration
+
+	// Add small variations without causing the cumulative to decrease
+	variableRx := uint64((iteration % 7) * 10000)
+	variableTx := uint64((iteration % 5) * 5000)
 
 	return []InterfaceStats{
 		{
 			Name:      "eth0",
-			RxBytes:   uint64(iteration) * rxMultiplier,
-			TxBytes:   uint64(iteration) * txMultiplier,
+			RxBytes:   uint64(iteration) * (baseRxRate + variableRx),
+			TxBytes:   uint64(iteration) * (baseTxRate + variableTx),
 			RxPackets: uint64(iteration) * 1000,
 			TxPackets: uint64(iteration) * 500,
 			Timestamp: base,
