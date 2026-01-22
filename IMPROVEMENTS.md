@@ -123,6 +123,31 @@ Contains:
 
 ---
 
+## 5. ✅ Added New Commands (2026-01-22)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns tcptest` | TCP connectivity test with DNS/connect/TLS timing breakdown | 7 |
+| `nns bwmon` | Real-time bandwidth monitor per interface | 9 |
+| `nns services` | Service detection / banner grabbing for ports | 12 |
+
+**Total commands:** 24
+
+**Files Created:**
+```
+internal/tcptest/tcptest.go         # TCP test library
+internal/tcptest/tcptest_test.go    # Tests
+internal/bwmon/bwmon.go             # Bandwidth monitor library
+internal/bwmon/bwmon_test.go        # Tests
+internal/services/services.go       # Service detection library
+internal/services/services_test.go  # Tests
+cmd/nns/cmd_tcptest.go              # CLI handler
+cmd/nns/cmd_bwmon.go                # CLI handler
+cmd/nns/cmd_services.go             # CLI handler
+```
+
+---
+
 ## Remaining (Optional)
 
 | Task | Priority |

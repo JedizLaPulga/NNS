@@ -8,26 +8,51 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 
 ## Features
 
-- **Ping** - Send ICMP echo requests to test network connectivity and measure latency
+### Network Diagnostics
+- **Ping** - Send ICMP echo requests with advanced statistics (jitter, percentiles)
 - **Traceroute** - Trace the network path to a destination host with AS lookup
-- **Port Scanning** - Discover open ports and services on target hosts
-- **HTTP Benchmarking** - Performance test HTTP endpoints with detailed metrics
-- **DNS Lookup** - Query DNS records (A, MX, TXT, NS, etc.) with custom resolvers
-- **SSL Analysis** - Analyze TLS certificates with security grading (A+ to F)
-- **HTTP Client** - HTTP client with detailed timing breakdown (DNS, TLS, TTFB)
-- **Debug Proxy** - Local proxy server for debugging HTTP traffic
+- **MTR** - My TraceRoute - continuous ping + traceroute combined
+- **TCP Test** - TCP connectivity test with DNS/connect/TLS timing breakdown
+
+### Discovery & Scanning
+- **Port Scan** - Discover open ports on target hosts
+- **Services** - Detect services via banner grabbing and protocol identification
 - **Network Sweep** - Discover live hosts on a network (CIDR range scanning)
 - **ARP Table** - View ARP cache with MAC vendor lookup
+
+### Performance & Monitoring
+- **HTTP Benchmark** - Performance test HTTP endpoints with detailed metrics
+- **Speed Test** - Internet bandwidth speed test
+- **Bandwidth Monitor** - Real-time bandwidth usage per interface
+
+### DNS & Domain
+- **DNS Lookup** - Query DNS records (A, MX, TXT, NS, etc.) with custom resolvers
 - **WHOIS Lookup** - Query domain and IP registration information
+- **IP Info** - IP geolocation and ASN lookup
+
+### Security & Certificates
+- **SSL Analysis** - Analyze TLS certificates with security grading (A+ to F)
+- **HTTP Headers** - Analyze HTTP security headers
+
+### Utilities
+- **HTTP Client** - HTTP client with detailed timing breakdown (DNS, TLS, TTFB)
+- **Debug Proxy** - Local proxy server for debugging HTTP traffic
 - **Netstat** - Show network connections and routing tables
+- **Wake-on-LAN** - Power on remote machines via WoL magic packets
+- **CIDR Calculator** - Subnet calculator and IP range utilities
+- **MAC Lookup** - MAC address vendor lookup
+- **Interfaces** - List network interfaces with details
+- **Net Watch** - Monitor network changes in real-time
 
 ## Why NNS?
 
-- ✅ **Minimal Dependencies** - Built only with `net`, `http`, and `os` from Go stdlib
+- ✅ **24 Commands** - Comprehensive networking toolkit
+- ✅ **Minimal Dependencies** - Built only with Go stdlib and `golang.org/x/*`
 - ✅ **Single Binary** - Easy deployment and distribution
 - ✅ **Cross-Platform** - Works on Linux, Windows, and macOS
 - ✅ **Fast & Lightweight** - No bloat, pure performance
 - ✅ **Scriptable** - Perfect for automation and scripting
+- ✅ **CI/CD Ready** - GitHub Actions workflows included
 
 ## Installation
 
@@ -39,8 +64,15 @@ cd NNS
 go build -o nns ./cmd/nns
 ```
 
+### With Version Info
+
+```bash
+go build -ldflags="-X main.version=v1.0.0 -X main.commit=$(git rev-parse --short HEAD)" -o nns ./cmd/nns
+```
+
 ### Binary Releases
-*Coming soon!*
+
+Download from [Releases](https://github.com/JedizLaPulga/NNS/releases) page.
 
 ## Quick Start
 
@@ -51,83 +83,111 @@ nns --help
 # Check version
 nns --version
 
-# Ping a host
-nns ping google.com
-
-# Scan ports
-nns portscan 192.168.1.1 --ports 80,443
-
-# Benchmark an API
-nns bench https://api.example.com --requests 1000
-
-# Trace route to host
+# === Network Diagnostics ===
+nns ping google.com -c 5
 nns traceroute google.com
+nns mtr google.com --count 10
+nns tcptest google.com -p 443 -c 4
 
-# DNS lookup
-nns dns google.com --type MX
-
-# SSL certificate analysis
-nns ssl google.com --chain
-
-# Start debugging proxy
-nns proxy --port 8080
-
-# Sweep network for live hosts
+# === Discovery & Scanning ===
+nns portscan 192.168.1.1 --ports 22,80,443
+nns services scanme.nmap.org -p 22,80,443 --open
 nns sweep 192.168.1.0/24
-
-# View ARP table
 nns arp
 
-# WHOIS lookup
-nns whois google.com
+# === Performance & Monitoring ===
+nns bench https://api.example.com --requests 1000
+nns speedtest
+nns bwmon --simulate
 
-# Show listening ports
+# === DNS & Domain ===
+nns dns google.com --type MX
+nns whois google.com
+nns ipinfo 8.8.8.8
+
+# === Security ===
+nns ssl google.com --chain
+nns headers https://example.com
+
+# === Utilities ===
+nns http https://api.example.com --timing
+nns proxy --port 8080
 nns netstat --listen
+nns wol AA:BB:CC:DD:EE:FF
+nns cidr 192.168.1.0/24
+nns mac AA:BB:CC:DD:EE:FF
+nns interfaces --active
+nns netwatch
 ```
 
-## Documentation
+## Command Reference
 
-See the [docs](docs/) directory for detailed documentation on each command:
-
-- [Ping](docs/commands/ping.md)
-- [Traceroute](docs/commands/traceroute.md)
-- [Port Scan](docs/commands/portscan.md)
-- [HTTP Benchmark](docs/commands/bench.md)
-- [DNS Lookup](docs/commands/dns.md)
-- [SSL Analysis](docs/commands/ssl.md)
-- [HTTP Client](docs/commands/http.md)
-- [Proxy Server](docs/commands/proxy.md)
-- [Network Sweep](docs/commands/sweep.md)
-- [ARP Table](docs/commands/arp.md)
-- [WHOIS Lookup](docs/commands/whois.md)
-- [Netstat](docs/commands/netstat.md)
+| Command | Description |
+|---------|-------------|
+| `ping` | ICMP echo requests with advanced statistics |
+| `traceroute` | Trace network path to host |
+| `mtr` | Continuous ping + traceroute |
+| `tcptest` | TCP connectivity with timing breakdown |
+| `portscan` | Port scanning |
+| `services` | Service detection via banner grabbing |
+| `sweep` | Network host discovery |
+| `arp` | ARP table with vendor lookup |
+| `bench` | HTTP endpoint benchmarking |
+| `speedtest` | Bandwidth speed test |
+| `bwmon` | Real-time bandwidth monitor |
+| `dns` | DNS record lookups |
+| `whois` | Domain/IP registration info |
+| `ipinfo` | IP geolocation and ASN |
+| `ssl` | TLS certificate analysis |
+| `headers` | HTTP security headers |
+| `http` | HTTP client with timing |
+| `proxy` | Debug proxy server |
+| `netstat` | Network connections |
+| `wol` | Wake-on-LAN |
+| `cidr` | Subnet calculator |
+| `mac` | MAC vendor lookup |
+| `interfaces` | List network interfaces |
+| `netwatch` | Monitor network changes |
 
 ## Project Structure
 
 ```
 NNS/
-├── cmd/nns/           # Main application entry point
-├── internal/          # Private packages
-│   ├── cli/          # CLI utilities
-│   ├── ping/         # Ping implementation
-│   ├── traceroute/   # Traceroute implementation
-│   ├── portscan/     # Port scanning
-│   ├── bench/        # HTTP benchmarking
-│   ├── dns/          # DNS lookups
-│   ├── ssl/          # SSL/TLS analysis
-│   ├── httpclient/   # HTTP client
-│   ├── proxy/        # Proxy server
-│   ├── sweep/        # Network sweep
-│   ├── arp/          # ARP table viewer
-│   ├── whois/        # WHOIS client
-│   └── netstat/      # Network connections
-├── docs/             # Documentation
-└── img/              # Assets and logo
+├── cmd/nns/           # CLI entry point (25 files)
+│   ├── main.go        # Command router
+│   └── cmd_*.go       # Individual command handlers
+├── internal/          # Private packages (27 packages)
+│   ├── ping/          # ICMP ping
+│   ├── traceroute/    # Traceroute
+│   ├── mtr/           # My TraceRoute
+│   ├── tcptest/       # TCP testing
+│   ├── portscan/      # Port scanning
+│   ├── services/      # Service detection
+│   ├── sweep/         # Network sweep
+│   ├── arp/           # ARP table
+│   ├── bench/         # HTTP benchmark
+│   ├── speedtest/     # Speed test
+│   ├── bwmon/         # Bandwidth monitor
+│   ├── dns/           # DNS lookups
+│   ├── whois/         # WHOIS client
+│   ├── ipinfo/        # IP geolocation
+│   ├── ssl/           # SSL analysis
+│   ├── headers/       # HTTP headers
+│   ├── httpclient/    # HTTP client
+│   ├── proxy/         # Proxy server
+│   ├── netstat/       # Network stats
+│   ├── wol/           # Wake-on-LAN
+│   ├── cidr/          # CIDR calculator
+│   ├── macutil/       # MAC utilities
+│   ├── interfaces/    # Network interfaces
+│   ├── netwatch/      # Network monitor
+│   └── ...
+├── .github/workflows/ # CI/CD pipelines
+├── docs/              # Documentation
+└── img/               # Assets
 ```
 
 ## Development
-
-Built with Go programming language, following best practices and extensive testing.
 
 ### Building
 
@@ -141,12 +201,33 @@ go build -o nns ./cmd/nns
 go test ./...
 ```
 
+### Linting
+
+```bash
+golangci-lint run
+```
+
+## CI/CD
+
+This project includes GitHub Actions workflows:
+
+- **CI** (`ci.yml`) - Runs on every push/PR
+  - Tests on Linux, Windows, macOS
+  - Tests with Go 1.22 and 1.23
+  - Runs golangci-lint
+  - Cross-compiles for 5 platforms
+
+- **Release** (`release.yml`) - Runs on version tags
+  - Builds binaries for all platforms
+  - Creates GitHub Release with checksums
+
 ## Contributing
 
 Contributions are welcome! Please ensure:
 1. All code is extensively tested
 2. Follow Go best practices
 3. Use only the Go standard library (or `golang.org/x/*` if absolutely necessary)
+4. Run `golangci-lint` before submitting
 
 ## License
 
