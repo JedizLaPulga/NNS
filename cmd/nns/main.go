@@ -69,6 +69,8 @@ func main() {
 		runSpeedtest(os.Args[2:])
 	case "netwatch":
 		runNetwatch(os.Args[2:])
+	case "tcptest":
+		runTCPTest(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
