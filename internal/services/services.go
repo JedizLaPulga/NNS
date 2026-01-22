@@ -57,11 +57,14 @@ func (s *Scanner) ScanAll(ctx context.Context) []ServiceInfo {
 	sem := make(chan struct{}, s.Concurrency)
 	resultCh := make(chan ServiceInfo, len(s.Ports))
 
+	portsStarted := 0
+PortLoop:
 	for _, port := range s.Ports {
 		select {
 		case <-ctx.Done():
-			break
+			break PortLoop
 		case sem <- struct{}{}:
+			portsStarted++
 			go func(p int) {
 				defer func() { <-sem }()
 				resultCh <- s.ScanPort(ctx, p)
@@ -69,11 +72,12 @@ func (s *Scanner) ScanAll(ctx context.Context) []ServiceInfo {
 		}
 	}
 
-	// Wait for all scans to complete
-	for i := 0; i < len(s.Ports); i++ {
+	// Wait for all started scans to complete
+CollectLoop:
+	for i := 0; i < portsStarted; i++ {
 		select {
 		case <-ctx.Done():
-			break
+			break CollectLoop
 		case result := <-resultCh:
 			results = append(results, result)
 		}
