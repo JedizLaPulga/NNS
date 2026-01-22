@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"math"
 	"net"
 	"sort"
 	"time"
@@ -113,7 +114,7 @@ func (s *Statistics) Calculate() {
 		variance += diff * diff
 	}
 	variance /= float64(len(sorted))
-	s.StdDev = time.Duration(sqrt(variance))
+	s.StdDev = time.Duration(math.Sqrt(variance))
 
 	// Average connection time
 	if len(s.AllConnTimes) > 0 {
@@ -132,18 +133,6 @@ func (s *Statistics) Calculate() {
 		}
 		s.AvgDNSTime = dnsSum / time.Duration(len(s.AllDNSTimes))
 	}
-}
-
-// sqrt calculates square root for float64.
-func sqrt(x float64) float64 {
-	if x <= 0 {
-		return 0
-	}
-	z := x
-	for i := 0; i < 10; i++ {
-		z = (z + x/z) / 2
-	}
-	return z
 }
 
 // Tester configures and executes TCP tests.
