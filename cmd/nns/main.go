@@ -108,6 +108,7 @@ COMMANDS:
     interfaces   List network interfaces with details
     speedtest    Bandwidth speed test
     netwatch     Monitor network changes in real-time
+    tcptest      TCP connectivity test with timing breakdown
 
 OPTIONS:
     --version, -v    Show version information
