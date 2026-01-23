@@ -151,12 +151,15 @@ nns netwatch
 | `mac` | MAC vendor lookup |
 | `interfaces` | List network interfaces |
 | `netwatch` | Monitor network changes |
+| `latency` | Continuous latency monitoring with sparkline |
+| `forward` | TCP port forwarding / tunnel |
+| `conntest` | Test connectivity to multiple hosts |
 
 ## Project Structure
 
 ```
 NNS/
-├── cmd/nns/           # CLI entry point (25 files)
+├── cmd/nns/           # CLI entry point (28 files)
 │   ├── main.go        # Command router
 │   └── cmd_*.go       # Individual command handlers
 ├── internal/          # Private packages (27 packages)
