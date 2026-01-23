@@ -75,6 +75,12 @@ func main() {
 		runBWMon(os.Args[2:])
 	case "services":
 		runServices(os.Args[2:])
+	case "latency":
+		runLatency(os.Args[2:])
+	case "forward":
+		runPortForward(os.Args[2:])
+	case "conntest":
+		runConnTest(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -115,6 +121,9 @@ COMMANDS:
     tcptest      TCP connectivity test with timing breakdown
     bwmon        Real-time bandwidth monitor
     services     Service detection via banner grabbing
+    latency      Continuous latency monitoring with sparkline
+    forward      TCP port forwarding / tunnel
+    conntest     Test connectivity to multiple hosts
 
 OPTIONS:
     --version, -v    Show version information
