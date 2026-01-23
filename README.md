@@ -24,6 +24,7 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 - **HTTP Benchmark** - Performance test HTTP endpoints with detailed metrics
 - **Speed Test** - Internet bandwidth speed test
 - **Bandwidth Monitor** - Real-time bandwidth usage per interface
+- **Latency Monitor** - Continuous latency monitoring with sparkline visualization
 
 ### DNS & Domain
 - **DNS Lookup** - Query DNS records (A, MX, TXT, NS, etc.) with custom resolvers
@@ -43,10 +44,12 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 - **MAC Lookup** - MAC address vendor lookup
 - **Interfaces** - List network interfaces with details
 - **Net Watch** - Monitor network changes in real-time
+- **Port Forward** - TCP port forwarding / tunnel utility
+- **Connectivity Test** - Test connectivity to multiple hosts in parallel
 
 ## Why NNS?
 
-- ✅ **24 Commands** - Comprehensive networking toolkit
+- ✅ **27 Commands** - Comprehensive networking toolkit
 - ✅ **Minimal Dependencies** - Built only with Go stdlib and `golang.org/x/*`
 - ✅ **Single Binary** - Easy deployment and distribution
 - ✅ **Cross-Platform** - Works on Linux, Windows, and macOS

@@ -148,6 +148,36 @@ cmd/nns/cmd_services.go             # CLI handler
 
 ---
 
+## 6. ✅ Added New Commands (2026-01-23)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns latency` | Continuous latency monitoring with sparkline visualization and alerting | 10 |
+| `nns forward` | TCP port forwarding / tunnel utility | 9 |
+| `nns conntest` | Parallel connectivity testing for multiple hosts | 11 |
+
+**Total commands:** 27
+
+**Files Created:**
+```
+internal/latency/latency.go          # Latency monitor library
+internal/latency/latency_test.go     # Tests
+internal/portforward/portforward.go  # Port forwarding library
+internal/portforward/portforward_test.go  # Tests
+internal/conntest/conntest.go        # Connection testing library
+internal/conntest/conntest_test.go   # Tests
+cmd/nns/cmd_latency.go               # CLI handler
+cmd/nns/cmd_forward.go               # CLI handler
+cmd/nns/cmd_conntest.go              # CLI handler
+```
+
+**New Features:**
+- **Latency Monitor**: Real-time latency tracking with sparkline graphs, percentile stats (p50/p95/p99), jitter calculation, and configurable alert thresholds
+- **Port Forward**: TCP tunnel with connection tracking, bandwidth statistics, and event callbacks
+- **Connectivity Tester**: Parallel testing of multiple hosts with TCP/TLS support, sorting, and summary statistics
+
+---
+
 ## Remaining (Optional)
 
 | Task | Priority |
