@@ -178,6 +178,36 @@ cmd/nns/cmd_conntest.go              # CLI handler
 
 ---
 
+## 7. ✅ Added New Commands (2026-01-24)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns dnstrace` | DNS resolution chain tracing from root servers | 10 |
+| `nns listen` | TCP/UDP listener for connectivity testing (netcat-like) | 12 |
+| `nns urlcheck` | URL health checker with status codes and response times | 10 |
+
+**Total commands:** 30
+
+**Files Created:**
+```
+internal/dnstrace/dnstrace.go           # DNS trace library
+internal/dnstrace/dnstrace_test.go      # Tests
+internal/listen/listen.go               # TCP/UDP listener library
+internal/listen/listen_test.go          # Tests
+internal/urlcheck/urlcheck.go           # URL health checker library
+internal/urlcheck/urlcheck_test.go      # Tests
+cmd/nns/cmd_dnstrace.go                 # CLI handler
+cmd/nns/cmd_listen.go                   # CLI handler
+cmd/nns/cmd_urlcheck.go                 # CLI handler
+```
+
+**New Features:**
+- **DNS Trace**: Follow DNS resolution from root servers through TLD to authoritative servers
+- **Listen**: Netcat-like listener with echo mode, connection tracking, and statistics
+- **URL Check**: Parallel URL health monitoring with status codes, TLS info, and response times
+
+---
+
 ## Remaining (Optional)
 
 | Task | Priority |

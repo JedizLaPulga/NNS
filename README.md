@@ -28,6 +28,7 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 
 ### DNS & Domain
 - **DNS Lookup** - Query DNS records (A, MX, TXT, NS, etc.) with custom resolvers
+- **DNS Trace** - Trace DNS resolution chain from root servers
 - **WHOIS Lookup** - Query domain and IP registration information
 - **IP Info** - IP geolocation and ASN lookup
 
@@ -46,10 +47,12 @@ A powerful networking toolkit for sysadmins and developers, built with Go's stan
 - **Net Watch** - Monitor network changes in real-time
 - **Port Forward** - TCP port forwarding / tunnel utility
 - **Connectivity Test** - Test connectivity to multiple hosts in parallel
+- **Listen** - TCP/UDP listener for connectivity testing (like netcat)
+- **URL Check** - Check health of multiple URLs with status codes
 
 ## Why NNS?
 
-- ✅ **27 Commands** - Comprehensive networking toolkit
+- ✅ **30 Commands** - Comprehensive networking toolkit
 - ✅ **Minimal Dependencies** - Built only with Go stdlib and `golang.org/x/*`
 - ✅ **Single Binary** - Easy deployment and distribution
 - ✅ **Cross-Platform** - Works on Linux, Windows, and macOS
@@ -154,12 +157,15 @@ nns netwatch
 | `latency` | Continuous latency monitoring with sparkline |
 | `forward` | TCP port forwarding / tunnel |
 | `conntest` | Test connectivity to multiple hosts |
+| `dnstrace` | Trace DNS resolution chain from root servers |
+| `listen` | TCP/UDP listener for connectivity testing |
+| `urlcheck` | Check health of multiple URLs |
 
 ## Project Structure
 
 ```
 NNS/
-├── cmd/nns/           # CLI entry point (28 files)
+├── cmd/nns/           # CLI entry point (31 files)
 │   ├── main.go        # Command router
 │   └── cmd_*.go       # Individual command handlers
 ├── internal/          # Private packages (27 packages)

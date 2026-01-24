@@ -81,6 +81,12 @@ func main() {
 		runPortForward(os.Args[2:])
 	case "conntest":
 		runConnTest(os.Args[2:])
+	case "dnstrace":
+		runDNSTrace(os.Args[2:])
+	case "listen":
+		runListen(os.Args[2:])
+	case "urlcheck":
+		runURLCheck(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -124,6 +130,9 @@ COMMANDS:
     latency      Continuous latency monitoring with sparkline
     forward      TCP port forwarding / tunnel
     conntest     Test connectivity to multiple hosts
+    dnstrace     Trace DNS resolution chain
+    listen       TCP/UDP listener for connectivity testing
+    urlcheck     Check health of multiple URLs
 
 OPTIONS:
     --version, -v    Show version information
