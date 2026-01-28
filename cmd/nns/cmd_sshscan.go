@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jedizlapulga/nns/internal/sshscan"
+	"github.com/JedizLaPulga/NNS/internal/sshscan"
 )
 
 func runSSHScan(args []string) {

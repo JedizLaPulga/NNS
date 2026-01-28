@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jedizlapulga/nns/internal/dnsperf"
+	"github.com/JedizLaPulga/NNS/internal/dnsperf"
 )
 
 func runDNSPerf(args []string) {
