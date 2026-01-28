@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jedizlapulga/nns/internal/httpstress"
+	"github.com/JedizLaPulga/NNS/internal/httpstress"
 )
 
 func runHTTPStress(args []string) {

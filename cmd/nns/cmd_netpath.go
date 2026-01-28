@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jedizlapulga/nns/internal/netpath"
+	"github.com/JedizLaPulga/NNS/internal/netpath"
 )
 
 func runNetpath(args []string) {

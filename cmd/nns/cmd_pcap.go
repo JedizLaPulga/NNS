@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jedizlapulga/nns/internal/pcap"
+	"github.com/JedizLaPulga/NNS/internal/pcap"
 )
 
 func runPcap(args []string) {
