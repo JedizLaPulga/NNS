@@ -333,7 +333,7 @@ func (s *Stats) Format() string {
 	sb.WriteString(fmt.Sprintf("Failed:             %d (%.1f%%)\n", s.FailedRequests, pct(s.FailedRequests, s.TotalRequests)))
 	sb.WriteString(fmt.Sprintf("Requests/sec:       %.2f\n", s.RequestsPerSec))
 	sb.WriteString(fmt.Sprintf("Bytes/sec:          %.2f KB\n", s.BytesPerSec/1024))
-	sb.WriteString(fmt.Sprintf("\nLatency:\n"))
+	sb.WriteString("\nLatency:\n")
 	sb.WriteString(fmt.Sprintf("  Min:    %v\n", s.MinLatency.Round(time.Microsecond)))
 	sb.WriteString(fmt.Sprintf("  Avg:    %v\n", s.AvgLatency.Round(time.Microsecond)))
 	sb.WriteString(fmt.Sprintf("  Max:    %v\n", s.MaxLatency.Round(time.Microsecond)))
@@ -341,13 +341,13 @@ func (s *Stats) Format() string {
 	sb.WriteString(fmt.Sprintf("  P90:    %v\n", s.P90Latency.Round(time.Microsecond)))
 	sb.WriteString(fmt.Sprintf("  P99:    %v\n", s.P99Latency.Round(time.Microsecond)))
 	if len(s.StatusCodes) > 0 {
-		sb.WriteString(fmt.Sprintf("\nStatus Codes:\n"))
+		sb.WriteString("\nStatus Codes:\n")
 		for code, count := range s.StatusCodes {
 			sb.WriteString(fmt.Sprintf("  %d: %d\n", code, count))
 		}
 	}
 	if len(s.ErrorCounts) > 0 {
-		sb.WriteString(fmt.Sprintf("\nErrors:\n"))
+		sb.WriteString("\nErrors:\n")
 		for err, count := range s.ErrorCounts {
 			sb.WriteString(fmt.Sprintf("  %s: %d\n", err, count))
 		}
