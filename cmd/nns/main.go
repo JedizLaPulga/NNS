@@ -87,6 +87,16 @@ func main() {
 		runListen(os.Args[2:])
 	case "urlcheck":
 		runURLCheck(os.Args[2:])
+	case "pcap":
+		runPcap(os.Args[2:])
+	case "netpath":
+		runNetpath(os.Args[2:])
+	case "httpstress":
+		runHTTPStress(os.Args[2:])
+	case "sshscan":
+		runSSHScan(os.Args[2:])
+	case "dnsperf":
+		runDNSPerf(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -133,6 +143,11 @@ COMMANDS:
     dnstrace     Trace DNS resolution chain
     listen       TCP/UDP listener for connectivity testing
     urlcheck     Check health of multiple URLs
+    pcap         Packet capture and analysis
+    netpath      Network path quality analysis
+    httpstress   HTTP load/stress testing
+    sshscan      SSH server security audit
+    dnsperf      DNS resolver performance benchmark
 
 OPTIONS:
     --version, -v    Show version information
