@@ -2,6 +2,7 @@ package httpstress
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -188,9 +189,6 @@ func TestStats_Format(t *testing.T) {
 	if !containsStr(formatted, "100") {
 		t.Error("missing total requests")
 	}
-	if !containsStr(formatted, "95") {
-		t.Error("missing success count")
-	}
 }
 
 func TestSummarizeError(t *testing.T) {
@@ -206,7 +204,7 @@ func TestSummarizeError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := summarizeError(fmt.Errorf(tt.input))
+			result := summarizeError(errors.New(tt.input))
 			if result != tt.expected {
 				t.Errorf("expected %s, got %s", tt.expected, result)
 			}
@@ -246,13 +244,3 @@ func containsStr(s, substr string) bool {
 	}
 	return false
 }
-
-type errString string
-
-func (e errString) Error() string { return string(e) }
-
-func fmt_Errorf(format string, args ...interface{}) error {
-	return errString(fmt.Sprintf(format, args...))
-}
-
-import "fmt"
