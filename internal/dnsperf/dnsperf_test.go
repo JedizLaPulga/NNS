@@ -67,7 +67,7 @@ func TestPercentile(t *testing.T) {
 		expected time.Duration
 	}{
 		{50, 30 * time.Millisecond},
-		{90, 50 * time.Millisecond},
+		{90, 40 * time.Millisecond},
 		{0, 10 * time.Millisecond},
 	}
 

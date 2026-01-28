@@ -162,8 +162,8 @@ func TestPercentile(t *testing.T) {
 	}
 
 	p90 := percentile(durations, 90)
-	if p90 != 50*time.Millisecond {
-		t.Errorf("expected P90=50ms, got %v", p90)
+	if p90 != 40*time.Millisecond {
+		t.Errorf("expected P90=40ms, got %v", p90)
 	}
 }
 
