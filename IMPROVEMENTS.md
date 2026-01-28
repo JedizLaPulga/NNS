@@ -208,9 +208,50 @@ cmd/nns/cmd_urlcheck.go                 # CLI handler
 
 ---
 
+## 8. ✅ Added New Commands (2026-01-28)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns pcap` | Packet capture and analysis with filtering | 11 |
+| `nns netpath` | Network path quality analysis with hop scoring | 13 |
+| `nns httpstress` | HTTP load/stress testing with detailed metrics | 11 |
+| `nns sshscan` | SSH server fingerprinting and security audit | 12 |
+| `nns dnsperf` | DNS resolver performance benchmarking | 11 |
+
+**Total commands:** 35
+
+**Files Created:**
+```
+internal/pcap/pcap.go                   # Packet capture library
+internal/pcap/pcap_test.go              # Tests
+internal/netpath/netpath.go             # Network path analyzer
+internal/netpath/netpath_test.go        # Tests
+internal/httpstress/httpstress.go       # HTTP stress testing
+internal/httpstress/httpstress_test.go  # Tests
+internal/sshscan/sshscan.go             # SSH scanner library
+internal/sshscan/sshscan_test.go        # Tests
+internal/dnsperf/dnsperf.go             # DNS benchmark library
+internal/dnsperf/dnsperf_test.go        # Tests
+cmd/nns/cmd_pcap.go                     # CLI handler
+cmd/nns/cmd_netpath.go                  # CLI handler
+cmd/nns/cmd_httpstress.go               # CLI handler
+cmd/nns/cmd_sshscan.go                  # CLI handler
+cmd/nns/cmd_dnsperf.go                  # CLI handler
+```
+
+**New Features:**
+- **Packet Capture**: Network packet capture with protocol/port/host filtering and statistics
+- **Network Path Analysis**: Full path tracing with quality scores, jitter, and packet loss per hop
+- **HTTP Stress Test**: Load testing with concurrency, percentile latencies (P50/P90/P99), and progress
+- **SSH Security Scan**: Server fingerprinting, algorithm detection, and vulnerability assessment
+- **DNS Performance**: Benchmark multiple resolvers (Google, Cloudflare, Quad9, etc.) with comparison
+
+---
+
 ## Remaining (Optional)
 
 | Task | Priority |
 |------|----------|
 | Fix flaky speedtest | 🟡 Medium |
 | Add WoL tests | 🟢 Low |
+
