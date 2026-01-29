@@ -152,9 +152,9 @@ EXAMPLES:
 		}
 
 		fmt.Printf("%-20s %-18s %-16s %-10s %s\n",
-			truncate(dest, 20),
-			truncate(gateway, 18),
-			truncate(iface, 16),
+			truncateRoute(dest, 20),
+			truncateRoute(gateway, 18),
+			truncateRoute(iface, 16),
 			metric,
 			flags)
 	}
