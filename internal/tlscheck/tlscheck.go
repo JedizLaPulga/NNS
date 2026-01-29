@@ -2,6 +2,7 @@
 package tlscheck
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -34,32 +35,32 @@ type Certificate struct {
 
 // ChainResult represents the full certificate chain analysis.
 type ChainResult struct {
-	Host              string
-	Port              int
-	Verified          bool
-	VerifyError       string
-	TLSVersion        string
-	CipherSuite       string
-	ServerName        string
-	Certificates      []Certificate
-	ChainValid        bool
-	ChainError        string
-	ConnectTime       time.Duration
-	HandshakeTime     time.Duration
-	ExpiryWarnings    []string
-	SecurityWarnings  []string
-	Grade             string
+	Host             string
+	Port             int
+	Verified         bool
+	VerifyError      string
+	TLSVersion       string
+	CipherSuite      string
+	ServerName       string
+	Certificates     []Certificate
+	ChainValid       bool
+	ChainError       string
+	ConnectTime      time.Duration
+	HandshakeTime    time.Duration
+	ExpiryWarnings   []string
+	SecurityWarnings []string
+	Grade            string
 }
 
 // Checker configures TLS certificate checking.
 type Checker struct {
-	Host          string
-	Port          int
-	Timeout       time.Duration
-	SkipVerify    bool
-	ServerName    string
-	WarningDays   int // Days before expiry to trigger warning
-	CriticalDays  int // Days before expiry to trigger critical
+	Host         string
+	Port         int
+	Timeout      time.Duration
+	SkipVerify   bool
+	ServerName   string
+	WarningDays  int // Days before expiry to trigger warning
+	CriticalDays int // Days before expiry to trigger critical
 }
 
 // NewChecker creates a new Checker with default settings.
@@ -203,25 +204,28 @@ func (c *Checker) processCertificate(cert *x509.Certificate, now time.Time) Cert
 		CRLDistribution:    cert.CRLDistributionPoints,
 	}
 
-	// Get key size
-	switch key := cert.PublicKey.(type) {
-	case interface{ Size() int }:
-		certInfo.PublicKeyBits = key.Size() * 8
-	default:
-		// For RSA
-		if rsaKey, ok := cert.PublicKey.(interface{ N interface{ BitLen() int } }); ok {
-			certInfo.PublicKeyBits = rsaKey.N.BitLen()
-		}
-	}
+	// Get key size based on key type
+	certInfo.PublicKeyBits = getKeyBits(cert)
 
 	// Key usage
 	certInfo.KeyUsage = parseKeyUsage(cert.KeyUsage)
 	certInfo.ExtKeyUsage = parseExtKeyUsage(cert.ExtKeyUsage)
 
 	// Fingerprint (SHA-256)
-	certInfo.Fingerprint = fmt.Sprintf("%X", sha256Fingerprint(cert.Raw))
+	certInfo.Fingerprint = sha256Fingerprint(cert.Raw)
 
 	return certInfo
+}
+
+// getKeyBits returns the key size in bits.
+func getKeyBits(cert *x509.Certificate) int {
+	switch pub := cert.PublicKey.(type) {
+	case interface{ Size() int }:
+		return pub.Size() * 8
+	default:
+		// Estimate based on signature
+		return 0
+	}
 }
 
 // analyzeCipherSecurity checks cipher suite security.
@@ -229,7 +233,7 @@ func (c *Checker) analyzeCipherSecurity(result *ChainResult, cipherID uint16) {
 	cipherName := tls.CipherSuiteName(cipherID)
 
 	// Check for weak ciphers
-	weakPatterns := []string{"RC4", "DES", "3DES", "MD5", "SHA1", "EXPORT", "NULL"}
+	weakPatterns := []string{"RC4", "DES", "3DES", "MD5", "EXPORT", "NULL"}
 	for _, pattern := range weakPatterns {
 		if strings.Contains(cipherName, pattern) {
 			result.SecurityWarnings = append(result.SecurityWarnings,
@@ -315,12 +319,17 @@ func tlsVersionString(version uint16) string {
 }
 
 func isWeakSignature(alg string) bool {
-	weak := []string{"MD5", "SHA1", "MD2", "MD4"}
+	weak := []string{"MD5", "MD2", "MD4"}
 	algUpper := strings.ToUpper(alg)
 	for _, w := range weak {
-		if strings.Contains(algUpper, w) && !strings.Contains(algUpper, "SHA256") && !strings.Contains(algUpper, "SHA384") && !strings.Contains(algUpper, "SHA512") {
+		if strings.Contains(algUpper, w) {
 			return true
 		}
+	}
+	// SHA1 is weak only if not paired with better hashes
+	if strings.Contains(algUpper, "SHA1") && !strings.Contains(algUpper, "SHA256") &&
+		!strings.Contains(algUpper, "SHA384") && !strings.Contains(algUpper, "SHA512") {
+		return true
 	}
 	return false
 }
@@ -372,11 +381,11 @@ func parseExtKeyUsage(eku []x509.ExtKeyUsage) []string {
 	return usages
 }
 
-func sha256Fingerprint(data []byte) []byte {
-	// Simple SHA-256 without importing crypto/sha256 to keep minimal
-	// In real implementation, use crypto/sha256
-	// For now, return first 32 bytes as placeholder
-	import "crypto/sha256"
+func sha256Fingerprint(data []byte) string {
 	sum := sha256.Sum256(data)
-	return sum[:]
+	var parts []string
+	for _, b := range sum {
+		parts = append(parts, fmt.Sprintf("%02X", b))
+	}
+	return strings.Join(parts, ":")
 }

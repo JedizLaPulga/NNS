@@ -164,17 +164,17 @@ func (s *Statistics) Quality() string {
 
 // Tester configures and executes WebSocket tests.
 type Tester struct {
-	URL          string
-	Count        int
-	Interval     time.Duration
-	Timeout      time.Duration
-	SkipVerify   bool
-	Origin       string
-	MessageSize  int
-	Protocol     string // Sub-protocol to request
-	Headers      http.Header
-	Stats        *Statistics
-	mu           sync.Mutex
+	URL         string
+	Count       int
+	Interval    time.Duration
+	Timeout     time.Duration
+	SkipVerify  bool
+	Origin      string
+	MessageSize int
+	Protocol    string // Sub-protocol to request
+	Headers     http.Header
+	Stats       *Statistics
+	mu          sync.Mutex
 }
 
 // NewTester creates a new Tester with default settings.
@@ -270,7 +270,9 @@ func (t *Tester) testOnce(ctx context.Context, seq int) Result {
 	}
 	defer conn.Close()
 
-	result.Protocol = conn.Config().Protocol[0] if len(conn.Config().Protocol) > 0 else ""
+	if len(conn.Config().Protocol) > 0 {
+		result.Protocol = conn.Config().Protocol[0]
+	}
 	result.HTTPStatus = 101
 
 	// Send ping message
@@ -364,7 +366,7 @@ func dialWebSocket(ctx context.Context, config *websocket.Config) (*websocket.Co
 // SupportedProtocols returns common WebSocket sub-protocols.
 func SupportedProtocols() []string {
 	return []string{
-		"",       // No protocol
+		"",
 		"chat",
 		"json",
 		"binary",
