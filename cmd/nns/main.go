@@ -97,6 +97,12 @@ func main() {
 		runSSHScan(os.Args[2:])
 	case "dnsperf":
 		runDNSPerf(os.Args[2:])
+	case "websocket", "ws":
+		runWebSocket(os.Args[2:])
+	case "tlscheck":
+		runTLSCheck(os.Args[2:])
+	case "routes":
+		runRoutes(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -148,6 +154,9 @@ COMMANDS:
     httpstress   HTTP load/stress testing
     sshscan      SSH server security audit
     dnsperf      DNS resolver performance benchmark
+    websocket    WebSocket connectivity and latency tester
+    tlscheck     TLS certificate chain validator
+    routes       View and analyze routing table
 
 OPTIONS:
     --version, -v    Show version information
