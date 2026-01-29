@@ -245,6 +245,35 @@ cmd/nns/cmd_dnsperf.go                  # CLI handler
 - **HTTP Stress Test**: Load testing with concurrency, percentile latencies (P50/P90/P99), and progress
 - **SSH Security Scan**: Server fingerprinting, algorithm detection, and vulnerability assessment
 - **DNS Performance**: Benchmark multiple resolvers (Google, Cloudflare, Quad9, etc.) with comparison
+---
+
+## 9. ✅ Added New Commands (2026-01-29)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns websocket` | WebSocket connectivity and latency tester | 11 |
+| `nns tlscheck` | TLS certificate chain validator with expiry warnings | 10 |
+| `nns routes` | System routing table viewer with gateway analysis | 11 |
+
+**Total commands:** 38
+
+**Files Created:**
+```
+internal/websocket/websocket.go         # WebSocket test library
+internal/websocket/websocket_test.go    # Tests
+internal/tlscheck/tlscheck.go           # TLS checker library
+internal/tlscheck/tlscheck_test.go      # Tests
+internal/routes/routes.go               # Routes library
+internal/routes/routes_test.go          # Tests
+cmd/nns/cmd_websocket.go                # CLI handler
+cmd/nns/cmd_tlscheck.go                 # CLI handler
+cmd/nns/cmd_routes.go                   # CLI handler
+```
+
+**New Features:**
+- **WebSocket Test**: WebSocket connectivity with RTT measurement, ping-pong latency, jitter, and statistics
+- **TLS Check**: Certificate chain validation with expiry warnings, security grading (A+ to F), and cipher analysis
+- **Routes**: Cross-platform routing table display with filtering, gateway testing, and interface analysis
 
 ---
 
