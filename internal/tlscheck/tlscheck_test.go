@@ -178,7 +178,7 @@ func TestCalculateGrade(t *testing.T) {
 			chainValid: true,
 			warnings:   []string{},
 			security:   []string{},
-			wantGrade:  "C",
+			wantGrade:  "C", // 100 - 50 = 50 -> C
 		},
 		{
 			name:       "invalid chain",
@@ -186,7 +186,7 @@ func TestCalculateGrade(t *testing.T) {
 			chainValid: false,
 			warnings:   []string{},
 			security:   []string{},
-			wantGrade:  "D",
+			wantGrade:  "D", // 100 - 40 = 60 -> D
 		},
 		{
 			name:       "expired cert",
@@ -194,7 +194,7 @@ func TestCalculateGrade(t *testing.T) {
 			chainValid: true,
 			warnings:   []string{"Certificate EXPIRED"},
 			security:   []string{},
-			wantGrade:  "C",
+			wantGrade:  "C", // 100 - 50 = 50 -> C
 		},
 	}
 
