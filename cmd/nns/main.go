@@ -103,6 +103,12 @@ func main() {
 		runTLSCheck(os.Args[2:])
 	case "routes":
 		runRoutes(os.Args[2:])
+	case "geoloc", "geo":
+		runGeoloc(os.Args[2:])
+	case "subnet":
+		runSubnet(os.Args[2:])
+	case "wakewait", "ww":
+		runWakeWait(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -157,6 +163,9 @@ COMMANDS:
     websocket    WebSocket connectivity and latency tester
     tlscheck     TLS certificate chain validator
     routes       View and analyze routing table
+    geoloc       IP geolocation with city, country, ASN info
+    subnet       Subnet calculator (split, merge, contains)
+    wakewait     Wake-on-LAN + wait for host to come online
 
 OPTIONS:
     --version, -v    Show version information
