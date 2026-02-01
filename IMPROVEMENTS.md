@@ -284,3 +284,34 @@ cmd/nns/cmd_routes.go                   # CLI handler
 | Fix flaky speedtest | 🟡 Medium |
 | Add WoL tests | 🟢 Low |
 
+---
+
+## 10. ✅ Added New Commands (2026-02-01)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns geoloc` | IP geolocation with city, country, ASN, and coordinates | 10 |
+| `nns subnet` | Subnet calculator with split, merge, contains, overlap checks | 10 |
+| `nns wakewait` | Wake-on-LAN with active polling until host comes online | 7 |
+
+**Total commands:** 41
+
+**Files Created:**
+```
+internal/geoloc/geoloc.go             # IP geolocation library
+internal/geoloc/geoloc_test.go        # Tests
+internal/subnet/subnet.go             # Subnet calculator library
+internal/subnet/subnet_test.go        # Tests
+internal/wakewait/wakewait.go         # Wake-wait library
+internal/wakewait/wakewait_test.go    # Tests
+cmd/nns/cmd_geoloc.go                 # CLI handler
+cmd/nns/cmd_subnet.go                 # CLI handler
+cmd/nns/cmd_wakewait.go               # CLI handler
+```
+
+**New Features:**
+- **IP Geolocation**: Lookup IPs to get city, country, ASN, ISP, coordinates with batch support and caching
+- **Subnet Calculator**: Calculate network/broadcast, split into smaller subnets, check containment/overlap, list hosts
+- **Wake-and-Wait**: Send WoL packet and actively monitor until host comes online with configurable port/timeout/retries
+
+
