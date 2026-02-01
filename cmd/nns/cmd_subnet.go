@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"nns/internal/subnet"
+	"github.com/JedizLaPulga/NNS/internal/subnet"
 )
 
 func runSubnet(args []string) {

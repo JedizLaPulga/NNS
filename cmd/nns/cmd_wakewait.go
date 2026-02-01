@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"nns/internal/wakewait"
+	"github.com/JedizLaPulga/NNS/internal/wakewait"
 )
 
 func runWakeWait(args []string) {

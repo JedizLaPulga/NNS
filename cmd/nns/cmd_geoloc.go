@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"nns/internal/geoloc"
+	"github.com/JedizLaPulga/NNS/internal/geoloc"
 )
 
 func runGeoloc(args []string) {
