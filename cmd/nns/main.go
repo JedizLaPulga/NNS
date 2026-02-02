@@ -109,6 +109,12 @@ func main() {
 		runSubnet(os.Args[2:])
 	case "wakewait", "ww":
 		runWakeWait(os.Args[2:])
+	case "dnssec":
+		runDNSSEC(os.Args[2:])
+	case "blacklist", "bl":
+		runBlacklist(os.Args[2:])
+	case "fingerprint", "fp":
+		runFingerprint(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -166,6 +172,9 @@ COMMANDS:
     geoloc       IP geolocation with city, country, ASN info
     subnet       Subnet calculator (split, merge, contains)
     wakewait     Wake-on-LAN + wait for host to come online
+    dnssec       DNSSEC chain validation and security audit
+    blacklist    Check IP/domain against spam blacklists
+    fingerprint  OS and service fingerprinting
 
 OPTIONS:
     --version, -v    Show version information
