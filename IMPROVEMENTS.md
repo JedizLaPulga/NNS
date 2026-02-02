@@ -314,4 +314,32 @@ cmd/nns/cmd_wakewait.go               # CLI handler
 - **Subnet Calculator**: Calculate network/broadcast, split into smaller subnets, check containment/overlap, list hosts
 - **Wake-and-Wait**: Send WoL packet and actively monitor until host comes online with configurable port/timeout/retries
 
+---
 
+## 11. ✅ Added New Commands (2026-02-02)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns dnssec` | DNSSEC chain-of-trust validation with security grading | 14 |
+| `nns blacklist` | IP/domain reputation check against 13+ RBLs/DNSBLs | 12 |
+| `nns fingerprint` | TCP/IP stack OS fingerprinting and service detection | 14 |
+
+**Total commands:** 44
+
+**Files Created:**
+```
+internal/dnssec/dnssec.go             # DNSSEC validation library
+internal/dnssec/dnssec_test.go        # Tests
+internal/blacklist/blacklist.go       # Blacklist checker library
+internal/blacklist/blacklist_test.go  # Tests
+internal/fingerprint/fingerprint.go   # OS/service fingerprinting
+internal/fingerprint/fingerprint_test.go # Tests
+cmd/nns/cmd_dnssec.go                 # CLI handler
+cmd/nns/cmd_blacklist.go              # CLI handler
+cmd/nns/cmd_fingerprint.go            # CLI handler
+```
+
+**New Features:**
+- **DNSSEC Validation**: Verify chain of trust from root, detect weak algorithms (RSA/MD5, SHA-1), check signature expiry, security grading (A+ to F)
+- **Blacklist Checker**: Query 13+ spam/malware blacklists (Spamhaus, SpamCop, Barracuda, SORBS, etc.), aggregate risk scoring, TXT reason lookup
+- **OS Fingerprinting**: TCP/IP stack analysis to identify OS family (Linux/Windows/BSD/macOS), service banner grabbing, version detection
