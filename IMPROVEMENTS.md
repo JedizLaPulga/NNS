@@ -208,17 +208,7 @@ cmd/nns/cmd_urlcheck.go                 # CLI handler
 
 ---
 
-## 8. ✅ Added New Commands (2026-01-28)
-
-| Command | Description | Tests |
-|---------|-------------|-------|
-| `nns pcap` | Packet capture and analysis with filtering | 11 |
-| `nns netpath` | Network path quality analysis with hop scoring | 13 |
-| `nns httpstress` | HTTP load/stress testing with detailed metrics | 11 |
-| `nns sshscan` | SSH server fingerprinting and security audit | 12 |
-| `nns dnsperf` | DNS resolver performance benchmarking | 11 |
-
-**Total commands:** 35
+## 8.
 
 **Files Created:**
 ```
@@ -343,3 +333,48 @@ cmd/nns/cmd_fingerprint.go            # CLI handler
 - **DNSSEC Validation**: Verify chain of trust from root, detect weak algorithms (RSA/MD5, SHA-1), check signature expiry, security grading (A+ to F)
 - **Blacklist Checker**: Query 13+ spam/malware blacklists (Spamhaus, SpamCop, Barracuda, SORBS, etc.), aggregate risk scoring, TXT reason lookup
 - **OS Fingerprinting**: TCP/IP stack analysis to identify OS family (Linux/Windows/BSD/macOS), service banner grabbing, version detection
+
+---
+
+## 12. ✅ Added New Commands (2026-02-03)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns snmp` | SNMP device discovery and OID walking with security audit | 14 |
+| `nns resolvers` | Compare DNS resolvers for speed, privacy, and security | 8 |
+| `nns ntp` | NTP server checker with time offset analysis | 10 |
+| `nns upnp` | UPnP device discovery with service enumeration | 9 |
+| `nns leak` | DNS/IP leak testing for VPN privacy audit | 11 |
+| `nns netspeed` | Internal network speed test (iperf-like client/server) | 12 |
+
+**Total commands:** 50
+
+**Files Created:**
+```
+internal/snmp/snmp.go                 # SNMP scanner library
+internal/snmp/snmp_test.go            # Tests
+internal/resolvers/resolvers.go       # DNS resolver comparison
+internal/resolvers/resolvers_test.go  # Tests
+internal/ntp/ntp.go                   # NTP checker library
+internal/ntp/ntp_test.go              # Tests
+internal/upnp/upnp.go                 # UPnP discovery library
+internal/upnp/upnp_test.go            # Tests
+internal/leak/leak.go                 # Leak tester library
+internal/leak/leak_test.go            # Tests
+internal/netspeed/netspeed.go         # Speed test library
+internal/netspeed/netspeed_test.go    # Tests
+cmd/nns/cmd_snmp.go                   # CLI handler
+cmd/nns/cmd_resolvers.go              # CLI handler
+cmd/nns/cmd_ntp.go                    # CLI handler
+cmd/nns/cmd_upnp.go                   # CLI handler
+cmd/nns/cmd_leak.go                   # CLI handler
+cmd/nns/cmd_netspeed.go               # CLI handler
+```
+
+**New Features:**
+- **SNMP Scanner**: Device discovery, OID walking, community string security audit, risk assessment
+- **DNS Resolver Comparison**: Test Google, Cloudflare, Quad9, etc. for latency, reliability, privacy
+- **NTP Checker**: Query NTP servers, analyze time offset, detect clock drift, stratum info
+- **UPnP Discovery**: Find IoT devices, routers, media servers with service enumeration
+- **Leak Tester**: DNS leak detection, public IP analysis, VPN validation, privacy recommendations
+- **Network Speed Test**: iperf-like client/server for LAN bandwidth testing, bidirectional support
