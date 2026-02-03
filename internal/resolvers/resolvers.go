@@ -299,3 +299,35 @@ func (r *CompareResult) Format() string {
 	}
 	return sb.String()
 }
+
+// GetByCategory returns resolvers filtered by category.
+func GetByCategory(category string) []Resolver {
+	var result []Resolver
+
+	for _, r := range PublicResolvers {
+		switch category {
+		case "privacy":
+			if r.Privacy == "no-logging" {
+				result = append(result, r)
+			}
+		case "security":
+			if r.Filtering == "malware" {
+				result = append(result, r)
+			}
+		case "family":
+			if r.Filtering == "family" {
+				result = append(result, r)
+			}
+		case "adblock":
+			if r.Filtering == "ads" {
+				result = append(result, r)
+			}
+		case "speed":
+			if r.Provider == "Google" || r.Provider == "Cloudflare" {
+				result = append(result, r)
+			}
+		}
+	}
+
+	return result
+}
