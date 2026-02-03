@@ -115,6 +115,18 @@ func main() {
 		runBlacklist(os.Args[2:])
 	case "fingerprint", "fp":
 		runFingerprint(os.Args[2:])
+	case "snmp":
+		runSNMP(os.Args[2:])
+	case "resolvers":
+		runResolvers(os.Args[2:])
+	case "ntp":
+		runNTP(os.Args[2:])
+	case "upnp":
+		runUPnP(os.Args[2:])
+	case "leak":
+		runLeak(os.Args[2:])
+	case "netspeed":
+		runNetspeed(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -175,6 +187,12 @@ COMMANDS:
     dnssec       DNSSEC chain validation and security audit
     blacklist    Check IP/domain against spam blacklists
     fingerprint  OS and service fingerprinting
+    snmp         SNMP device discovery and OID walking
+    resolvers    Compare DNS resolvers for speed/privacy
+    ntp          NTP server checker with time offset analysis
+    upnp         UPnP device discovery on local network
+    leak         DNS/IP leak testing for VPN privacy audit
+    netspeed     Internal network speed test (iperf-like)
 
 OPTIONS:
     --version, -v    Show version information
