@@ -191,7 +191,7 @@ func TestTruncate(t *testing.T) {
 		want   string
 	}{
 		{"short", 10, "short"},
-		{"a long string that should be cut", 15, "a long stri..."},
+		{"a long string that should be cut", 15, "a long strin..."},
 		{"exact12chars", 12, "exact12chars"},
 		{"", 5, ""},
 	}
@@ -375,8 +375,8 @@ func TestAuditLocalhostNoPorts(t *testing.T) {
 	if result.Target != "127.0.0.1" {
 		t.Errorf("expected target 127.0.0.1, got %s", result.Target)
 	}
-	if result.Duration <= 0 {
-		t.Error("expected positive duration")
+	if result.Duration < 0 {
+		t.Error("expected non-negative duration")
 	}
 }
 

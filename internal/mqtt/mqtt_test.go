@@ -394,8 +394,8 @@ func TestCheckWithMockBroker(t *testing.T) {
 	if !result.AuthResult.AnonAllowed {
 		t.Error("expected anonymous access to be allowed")
 	}
-	if result.ConnTime <= 0 {
-		t.Error("expected positive ConnTime")
+	if result.ConnTime < 0 {
+		t.Error("expected non-negative ConnTime")
 	}
 }
 

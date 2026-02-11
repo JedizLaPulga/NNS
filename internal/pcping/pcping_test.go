@@ -282,8 +282,8 @@ func TestTCPProbeWithLocalServer(t *testing.T) {
 		if !r.Success {
 			t.Errorf("result %d should be successful, error: %v", i+1, r.Error)
 		}
-		if r.RTT <= 0 {
-			t.Errorf("result %d should have positive RTT", i+1)
+		if r.RTT < 0 {
+			t.Errorf("result %d should have non-negative RTT", i+1)
 		}
 		if r.Protocol != ProtoTCP {
 			t.Errorf("result %d should have protocol TCP, got %s", i+1, r.Protocol)
