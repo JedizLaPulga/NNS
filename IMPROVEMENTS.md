@@ -378,3 +378,33 @@ cmd/nns/cmd_netspeed.go               # CLI handler
 - **UPnP Discovery**: Find IoT devices, routers, media servers with service enumeration
 - **Leak Tester**: DNS leak detection, public IP analysis, VPN validation, privacy recommendations
 - **Network Speed Test**: iperf-like client/server for LAN bandwidth testing, bidirectional support
+
+---
+
+## 13. ✅ Added New Commands (2026-02-11)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns mqtt` | MQTT broker connectivity, auth testing, topic probing, and latency | 19 |
+| `nns netaudit` | Network security audit — open DNS, SNMP defaults, weak TLS, exposed services | 24 |
+| `nns pcping` | Protocol-aware ping via TCP/UDP/HTTP/DNS (when ICMP is blocked) | 18 |
+
+**Total commands:** 53
+
+**Files Created:**
+```
+internal/mqtt/mqtt.go                 # MQTT broker checker library
+internal/mqtt/mqtt_test.go            # Tests
+internal/netaudit/netaudit.go         # Network security audit library
+internal/netaudit/netaudit_test.go    # Tests
+internal/pcping/pcping.go             # Protocol-aware ping library
+internal/pcping/pcping_test.go        # Tests
+cmd/nns/cmd_mqtt.go                   # CLI handler
+cmd/nns/cmd_netaudit.go               # CLI handler
+cmd/nns/cmd_pcping.go                 # CLI handler
+```
+
+**New Features:**
+- **MQTT Checker**: Test broker connectivity, anonymous auth detection, PINGREQ/PINGRESP latency, topic subscription probing, security assessment ($SYS exposure, wildcard access, TLS)
+- **Network Audit**: Scan for open DNS resolvers (DDoS risk), SNMP default community strings, Telnet exposure, weak TLS, expired certs, banner leakage, dangerous open ports — graded A-F
+- **Protocol Ping**: TCP connect, UDP, HTTP GET, and DNS query probes with RTT statistics (min/avg/max/median/p95/p99/stddev), quality assessment, and loss tracking
