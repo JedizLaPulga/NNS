@@ -127,6 +127,12 @@ func main() {
 		runLeak(os.Args[2:])
 	case "netspeed":
 		runNetspeed(os.Args[2:])
+	case "mqtt":
+		runMQTT(os.Args[2:])
+	case "netaudit", "audit":
+		runNetaudit(os.Args[2:])
+	case "pcping", "pcp":
+		runPCPing(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -193,6 +199,9 @@ COMMANDS:
     upnp         UPnP device discovery on local network
     leak         DNS/IP leak testing for VPN privacy audit
     netspeed     Internal network speed test (iperf-like)
+    mqtt         MQTT broker connectivity and security check
+    netaudit     Network security audit (misconfigurations)
+    pcping       Protocol-aware ping (TCP/UDP/HTTP/DNS)
 
 OPTIONS:
     --version, -v    Show version information
