@@ -208,7 +208,7 @@ cmd/nns/cmd_urlcheck.go                 # CLI handler
 
 ---
 
-## 8.
+## 8. ✅ Added New Commands (2026-01-28)
 
 **Files Created:**
 ```
