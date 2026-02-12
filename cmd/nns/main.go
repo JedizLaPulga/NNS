@@ -133,6 +133,12 @@ func main() {
 		runNetaudit(os.Args[2:])
 	case "pcping", "pcp":
 		runPCPing(os.Args[2:])
+	case "fwd", "revproxy":
+		runFwd(os.Args[2:])
+	case "certhunt", "ct":
+		runCerthunt(os.Args[2:])
+	case "neighbors", "nb":
+		runNeighbors(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -202,6 +208,9 @@ COMMANDS:
     mqtt         MQTT broker connectivity and security check
     netaudit     Network security audit (misconfigurations)
     pcping       Protocol-aware ping (TCP/UDP/HTTP/DNS)
+    fwd          HTTP/HTTPS reverse proxy with logging
+    certhunt     Certificate transparency log search
+    neighbors    mDNS/DNS-SD network neighbor discovery
 
 OPTIONS:
     --version, -v    Show version information
