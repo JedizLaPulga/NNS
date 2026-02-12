@@ -290,8 +290,13 @@ func (s *Searcher) Search(ctx context.Context) (*Result, error) {
 
 func (s *Searcher) searchCrtSh(ctx context.Context) ([]CertEntry, error) {
 	url := fmt.Sprintf("https://crt.sh/?q=%%25.%s&output=json", s.opts.Domain)
+	return s.searchCrtShWithURL(url)
+}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+// searchCrtShWithURL fetches certificate entries from the given URL.
+func (s *Searcher) searchCrtShWithURL(rawURL string) ([]CertEntry, error) {
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
 	if err != nil {
 		return nil, err
 	}
