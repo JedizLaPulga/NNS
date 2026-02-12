@@ -408,3 +408,33 @@ cmd/nns/cmd_pcping.go                 # CLI handler
 - **MQTT Checker**: Test broker connectivity, anonymous auth detection, PINGREQ/PINGRESP latency, topic subscription probing, security assessment ($SYS exposure, wildcard access, TLS)
 - **Network Audit**: Scan for open DNS resolvers (DDoS risk), SNMP default community strings, Telnet exposure, weak TLS, expired certs, banner leakage, dangerous open ports — graded A-F
 - **Protocol Ping**: TCP connect, UDP, HTTP GET, and DNS query probes with RTT statistics (min/avg/max/median/p95/p99/stddev), quality assessment, and loss tracking
+
+---
+
+## 14. ✅ Added New Commands (2026-02-12)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns fwd` | HTTP/HTTPS reverse proxy with request logging, header injection, and latency stats | 13 |
+| `nns certhunt` | Certificate transparency log search via crt.sh with live cert comparison | 17 |
+| `nns neighbors` | mDNS/DNS-SD network neighbor discovery (Bonjour) | 20 |
+
+**Total commands:** 56
+
+**Files Created:**
+```
+internal/reverseproxy/reverseproxy.go         # Reverse proxy library
+internal/reverseproxy/reverseproxy_test.go    # Tests
+internal/certhunt/certhunt.go                 # CT log search library
+internal/certhunt/certhunt_test.go            # Tests
+internal/neighbors/neighbors.go              # mDNS/DNS-SD discovery library
+internal/neighbors/neighbors_test.go         # Tests
+cmd/nns/cmd_fwd.go                           # CLI handler
+cmd/nns/cmd_certhunt.go                      # CLI handler
+cmd/nns/cmd_neighbors.go                     # CLI handler
+```
+
+**New Features:**
+- **Reverse Proxy**: Full HTTP/HTTPS reverse proxy with per-request logging, header injection/stripping, latency percentiles (P50/P95/P99), status code tracking, and throughput stats
+- **Certificate Hunt**: Search crt.sh Certificate Transparency logs for all issued certificates, deduplicate, detect wildcards/expired certs, compare with live TLS certificate, security grading
+- **Neighbor Discovery**: mDNS multicast queries for 13+ service types (HTTP, SSH, SMB, Printer, AirPlay, Chromecast, HomeKit, etc.), DNS-SD service browsing, TXT metadata extraction

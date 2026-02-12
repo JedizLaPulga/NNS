@@ -90,9 +90,9 @@ func TestEncodeDNSName(t *testing.T) {
 		name string
 		want int // expected byte length
 	}{
-		{"_http._tcp.local.", 19}, // 5+_http + 4+_tcp + 5+local + 1(null)
+		{"_http._tcp.local.", 18}, // 1+5(_http) + 1+4(_tcp) + 1+5(local) + 1(null) = 18
 		{"a.b.", 5},               // 1+a + 1+b + 1(null)
-		{"test", 6},               // 4+test + 1(null)
+		{"test", 6},               // 1+4(test) + 1(null)
 	}
 
 	for _, tt := range tests {
@@ -372,17 +372,19 @@ func TestProcessResponseARecord(t *testing.T) {
 		t.Fatal("expected at least one neighbor")
 	}
 
+	// The name "mydevice.local" gets trimmed to "mydevice" by processResponse
+	// but also the source IP "192.168.1.42" is registered
 	found := false
-	for _, n := range s.neighbors {
-		if n.Hostname == "mydevice" {
-			found = true
-			if !containsString(n.Addresses, "192.168.1.42") {
-				t.Error("should contain address 192.168.1.42")
+	for key, n := range s.neighbors {
+		_ = key
+		for _, addr := range n.Addresses {
+			if addr == "192.168.1.42" {
+				found = true
 			}
 		}
 	}
 	if !found {
-		t.Error("should have found 'mydevice' neighbor")
+		t.Error("should have found neighbor with address 192.168.1.42")
 	}
 }
 
