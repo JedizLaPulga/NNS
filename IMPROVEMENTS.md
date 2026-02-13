@@ -438,3 +438,33 @@ cmd/nns/cmd_neighbors.go                     # CLI handler
 - **Reverse Proxy**: Full HTTP/HTTPS reverse proxy with per-request logging, header injection/stripping, latency percentiles (P50/P95/P99), status code tracking, and throughput stats
 - **Certificate Hunt**: Search crt.sh Certificate Transparency logs for all issued certificates, deduplicate, detect wildcards/expired certs, compare with live TLS certificate, security grading
 - **Neighbor Discovery**: mDNS multicast queries for 13+ service types (HTTP, SSH, SMB, Printer, AirPlay, Chromecast, HomeKit, etc.), DNS-SD service browsing, TXT metadata extraction
+
+---
+
+## 15. ✅ Added New Commands (2026-02-13)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns asn` | BGP/ASN lookup via Team Cymru DNS and RDAP | 13 |
+| `nns portknock` | TCP/UDP port knock sequence sender with verification | 16 |
+| `nns jwt` | JWT token decoder and security analyzer (grade A-F) | 20 |
+
+**Total commands:** 59
+
+**Files Created:**
+```
+internal/asn/asn.go                     # ASN lookup library
+internal/asn/asn_test.go                # Tests
+internal/portknock/portknock.go         # Port knock library
+internal/portknock/portknock_test.go    # Tests
+internal/jwtutil/jwtutil.go            # JWT decoder library
+internal/jwtutil/jwtutil_test.go       # Tests
+cmd/nns/cmd_asn.go                     # CLI handler
+cmd/nns/cmd_portknock.go               # CLI handler
+cmd/nns/cmd_jwt.go                     # CLI handler
+```
+
+**New Features:**
+- **ASN Lookup**: Team Cymru DNS-based ASN resolution, RDAP org details, IPv4/IPv6 support, batch lookup, prefix/country/registry info
+- **Port Knock**: Send TCP/UDP knock sequences to trigger firewall rules, configurable delay/timeout, post-knock port verification, connection state tracking
+- **JWT Analyzer**: Decode JWT header and claims, detect `alg=none` and weak algorithms, check expiry/sensitive data in claims, security grading (A-F), stdin support
