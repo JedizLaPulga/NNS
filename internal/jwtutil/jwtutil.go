@@ -58,10 +58,7 @@ func Decode(tokenStr string) (*AnalysisResult, error) {
 
 	tokenStr = strings.TrimSpace(tokenStr)
 
-	// Remove "Bearer " prefix if present
-	if strings.HasPrefix(tokenStr, "Bearer ") {
-		tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
-	}
+	tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
 
 	parts := strings.Split(tokenStr, ".")
 	result.Parts = len(parts)
@@ -196,7 +193,7 @@ func analyzeHeader(r *AnalysisResult) {
 		})
 	}
 
-	if len(r.Parts) < 3 {
+	if r.Parts < 3 {
 		r.Findings = append(r.Findings, Finding{
 			Severity: "HIGH",
 			Message:  "Token has no signature segment",

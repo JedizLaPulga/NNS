@@ -139,6 +139,12 @@ func main() {
 		runCerthunt(os.Args[2:])
 	case "neighbors", "nb":
 		runNeighbors(os.Args[2:])
+	case "asn":
+		runASN(os.Args[2:])
+	case "portknock", "knock":
+		runPortKnock(os.Args[2:])
+	case "jwt":
+		runJWT(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -211,6 +217,9 @@ COMMANDS:
     fwd          HTTP/HTTPS reverse proxy with logging
     certhunt     Certificate transparency log search
     neighbors    mDNS/DNS-SD network neighbor discovery
+    asn          BGP/ASN lookup via Team Cymru and RDAP
+    portknock    TCP/UDP port knock sequence sender
+    jwt          JWT token decoder and security analyzer
 
 OPTIONS:
     --version, -v    Show version information
