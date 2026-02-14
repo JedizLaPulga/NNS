@@ -226,8 +226,8 @@ COMMANDS:
     asn          BGP/ASN lookup via Team Cymru and RDAP
     portknock    TCP/UDP port knock sequence sender
     jwt          JWT token decoder and security analyzer
-    encdec       Encode/decode data (Base64, Hex, URL, Binary)
-    httptrace    HTTP request tracing with redirect chain
+    encdec       Encode/decode (Base64, Hex, URL, Binary)
+    httptrace    HTTP request trace with redirect chain
     cidrmerge    Merge and consolidate CIDR ranges
 
 OPTIONS:
