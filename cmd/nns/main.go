@@ -145,6 +145,12 @@ func main() {
 		runPortKnock(os.Args[2:])
 	case "jwt":
 		runJWT(os.Args[2:])
+	case "encdec", "encode", "decode":
+		runEncDec(os.Args[2:])
+	case "httptrace", "htrace":
+		runHTTPTrace(os.Args[2:])
+	case "cidrmerge", "cmerge":
+		runCIDRMerge(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -220,6 +226,9 @@ COMMANDS:
     asn          BGP/ASN lookup via Team Cymru and RDAP
     portknock    TCP/UDP port knock sequence sender
     jwt          JWT token decoder and security analyzer
+    encdec       Encode/decode data (Base64, Hex, URL, Binary)
+    httptrace    HTTP request tracing with redirect chain
+    cidrmerge    Merge and consolidate CIDR ranges
 
 OPTIONS:
     --version, -v    Show version information
