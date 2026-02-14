@@ -468,3 +468,33 @@ cmd/nns/cmd_jwt.go                     # CLI handler
 - **ASN Lookup**: Team Cymru DNS-based ASN resolution, RDAP org details, IPv4/IPv6 support, batch lookup, prefix/country/registry info
 - **Port Knock**: Send TCP/UDP knock sequences to trigger firewall rules, configurable delay/timeout, post-knock port verification, connection state tracking
 - **JWT Analyzer**: Decode JWT header and claims, detect `alg=none` and weak algorithms, check expiry/sensitive data in claims, security grading (A-F), stdin support
+
+---
+
+## 16. ✅ Added New Commands (2026-02-14)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns encdec` | Encode/decode utility for Base64, Hex, URL encoding, and Binary | 30 |
+| `nns httptrace` | HTTP request tracing with redirect chain, per-hop timing, and security header inspection | 15 |
+| `nns cidrmerge` | CIDR aggregation — merge, deduplicate, exclude, containment, and overlap checks | 23 |
+
+**Total commands:** 62
+
+**Files Created:**
+```
+internal/encdec/encdec.go               # Encode/decode library
+internal/encdec/encdec_test.go           # Tests
+internal/httptrace/httptrace.go          # HTTP trace library
+internal/httptrace/httptrace_test.go     # Tests
+internal/cidrmerge/cidrmerge.go          # CIDR merge library
+internal/cidrmerge/cidrmerge_test.go     # Tests
+cmd/nns/cmd_encdec.go                   # CLI handler
+cmd/nns/cmd_httptrace.go                # CLI handler
+cmd/nns/cmd_cidrmerge.go                # CLI handler
+```
+
+**New Features:**
+- **Encode/Decode**: Base64, Base64URL, Hex, URL encoding, and Binary representations with encode, decode, auto-detection, and encode-all modes. Supports stdin input.
+- **HTTP Trace**: Follow HTTP redirect chains with full timing breakdown per hop (DNS, connect, TLS handshake, TTFB). Detects security headers (HSTS, CSP, X-Frame-Options). Custom method and headers support.
+- **CIDR Merge**: Consolidate overlapping and adjacent IP prefixes into minimal set. Contains, overlap, and exclude operations. Host counting with IPv4/IPv6 support. Handles bare IPs and invalid input gracefully.
