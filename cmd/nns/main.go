@@ -151,6 +151,12 @@ func main() {
 		runHTTPTrace(os.Args[2:])
 	case "cidrmerge", "cmerge":
 		runCIDRMerge(os.Args[2:])
+	case "hashcheck", "hash":
+		runHashCheck(os.Args[2:])
+	case "netcalc", "ipcalc":
+		runNetcalc(os.Args[2:])
+	case "passwd", "pwgen":
+		runPasswd(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -229,6 +235,9 @@ COMMANDS:
     encdec       Encode/decode (Base64, Hex, URL, Binary)
     httptrace    HTTP request trace with redirect chain
     cidrmerge    Merge and consolidate CIDR ranges
+    hashcheck    Compute and verify cryptographic hashes
+    netcalc      Network/IP calculator and arithmetic
+    passwd       Password strength analyzer and generator
 
 OPTIONS:
     --version, -v    Show version information
