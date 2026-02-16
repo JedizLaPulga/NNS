@@ -528,3 +528,33 @@ cmd/nns/cmd_passwd.go                  # CLI handler
 - **Hash Check**: Compute MD5, SHA-1, SHA-256, SHA-512 hashes for strings or files. Compare against expected hash for integrity verification. Hash-all mode computes every algorithm at once.
 - **Net Calc**: Full subnet breakdown (network/broadcast/wildcard/netmask, host counts, first/last usable). IP arithmetic (add/subtract offset). IP range enumeration. Binary representation. IPv4 class and private range detection.
 - **Password**: Entropy-based strength analysis with crack time estimation (10B guesses/sec). Detects common words, repeated chars, sequential patterns. Score 0-100. Cryptographically secure password generator with charset control and exclusion lists.
+
+---
+
+## 18. ✅ Added New Commands (2026-02-16)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns ratelimit` | HTTP rate limit detection — probes endpoints for X-RateLimit headers, 429 responses, and Retry-After policies | 24 |
+| `nns ipconv` | IP address format converter — decimal, hex, octal, binary, integer, and IPv6-mapped representations | 28 |
+| `nns tcpdump` | TCP connection analyzer — handshake timing, TLS negotiation details, multi-port probing | 17 |
+
+**Total commands:** 68
+
+**Files Created:**
+```
+internal/ratelimit/ratelimit.go          # Rate limit probe library
+internal/ratelimit/ratelimit_test.go     # Tests
+internal/ipconv/ipconv.go               # IP converter library
+internal/ipconv/ipconv_test.go           # Tests
+internal/tcpdump/tcpdump.go             # TCP analyzer library
+internal/tcpdump/tcpdump_test.go        # Tests
+cmd/nns/cmd_ratelimit.go                # CLI handler
+cmd/nns/cmd_ipconv.go                   # CLI handler
+cmd/nns/cmd_tcpdump.go                  # CLI handler
+```
+
+**New Features:**
+- **Rate Limit Probe**: Send configurable burst of requests to discover rate limiting policies. Parses X-RateLimit-Limit/Remaining/Reset/Window headers, detects 429 responses with Retry-After, supports concurrent probing, custom headers, and per-request detail view.
+- **IP Converter**: Convert IPs between dotted decimal, hex dotted (0xC0.0xA8.0x01.0x01), hex integer (0xC0A80101), octal (0300.0250.0001.0001), binary, and plain integer. Supports IPv4/IPv6, reverse DNS format, and IPv6-mapped addresses. Flexible input parsing accepts any format.
+- **TCP Dump**: Analyze TCP connections with DNS resolution timing, TCP handshake timing, and optional TLS handshake inspection (version, cipher suite, ALPN, server name). Multi-port probing with summary table. Detects IPv4/IPv6 and connection state.
