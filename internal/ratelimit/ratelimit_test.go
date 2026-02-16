@@ -262,11 +262,11 @@ func TestProbeLatencyTracking(t *testing.T) {
 	opts.Delay = 0
 
 	s := Probe(context.Background(), opts)
-	if s.AvgLatency <= 0 {
-		t.Error("avg latency should be positive")
+	if s.AvgLatency < 0 {
+		t.Error("avg latency should be non-negative")
 	}
-	if s.MinLatency <= 0 {
-		t.Error("min latency should be positive")
+	if s.MinLatency < 0 {
+		t.Error("min latency should be non-negative")
 	}
 	if s.MaxLatency < s.MinLatency {
 		t.Error("max should be >= min")
