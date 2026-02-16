@@ -157,6 +157,12 @@ func main() {
 		runNetcalc(os.Args[2:])
 	case "passwd", "pwgen":
 		runPasswd(os.Args[2:])
+	case "ratelimit", "rl":
+		runRatelimit(os.Args[2:])
+	case "ipconv", "ip2":
+		runIPConv(os.Args[2:])
+	case "tcpdump", "td":
+		runTCPDump(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -238,6 +244,9 @@ COMMANDS:
     hashcheck    Compute and verify cryptographic hashes
     netcalc      Network/IP calculator and arithmetic
     passwd       Password strength analyzer and generator
+    ratelimit    HTTP rate limit detection and policy probe
+    ipconv       IP address format converter (hex/oct/bin/int)
+    tcpdump      TCP connection analyzer with TLS inspection
 
 OPTIONS:
     --version, -v    Show version information
