@@ -498,3 +498,33 @@ cmd/nns/cmd_cidrmerge.go                # CLI handler
 - **Encode/Decode**: Base64, Base64URL, Hex, URL encoding, and Binary representations with encode, decode, auto-detection, and encode-all modes. Supports stdin input.
 - **HTTP Trace**: Follow HTTP redirect chains with full timing breakdown per hop (DNS, connect, TLS handshake, TTFB). Detects security headers (HSTS, CSP, X-Frame-Options). Custom method and headers support.
 - **CIDR Merge**: Consolidate overlapping and adjacent IP prefixes into minimal set. Contains, overlap, and exclude operations. Host counting with IPv4/IPv6 support. Handles bare IPs and invalid input gracefully.
+
+---
+
+## 17. ✅ Added New Commands (2026-02-15)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns hashcheck` | Cryptographic hash calculator (MD5, SHA-1, SHA-256, SHA-512) with file hashing and verify mode | 25 |
+| `nns netcalc` | Network/IP calculator with subnet info, IP arithmetic, range listing, and binary representation | 22 |
+| `nns passwd` | Password strength analyzer with entropy/crack-time estimation and secure password generator | 25 |
+
+**Total commands:** 65
+
+**Files Created:**
+```
+internal/hashcheck/hashcheck.go         # Hash calculator library
+internal/hashcheck/hashcheck_test.go    # Tests
+internal/netcalc/netcalc.go             # Network calculator library
+internal/netcalc/netcalc_test.go        # Tests
+internal/passwd/passwd.go               # Password analyzer/generator library
+internal/passwd/passwd_test.go          # Tests
+cmd/nns/cmd_hashcheck.go               # CLI handler
+cmd/nns/cmd_netcalc.go                 # CLI handler
+cmd/nns/cmd_passwd.go                  # CLI handler
+```
+
+**New Features:**
+- **Hash Check**: Compute MD5, SHA-1, SHA-256, SHA-512 hashes for strings or files. Compare against expected hash for integrity verification. Hash-all mode computes every algorithm at once.
+- **Net Calc**: Full subnet breakdown (network/broadcast/wildcard/netmask, host counts, first/last usable). IP arithmetic (add/subtract offset). IP range enumeration. Binary representation. IPv4 class and private range detection.
+- **Password**: Entropy-based strength analysis with crack time estimation (10B guesses/sec). Detects common words, repeated chars, sequential patterns. Score 0-100. Cryptographically secure password generator with charset control and exclusion lists.
