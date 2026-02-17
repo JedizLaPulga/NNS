@@ -163,6 +163,12 @@ func main() {
 		runIPConv(os.Args[2:])
 	case "tcpdump", "td":
 		runTCPDump(os.Args[2:])
+	case "sysinfo", "sys":
+		runSysinfo(os.Args[2:])
+	case "httphealth", "hh":
+		runHTTPHealth(os.Args[2:])
+	case "dnsenum", "enumdns":
+		runDNSEnum(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		printHelp()
@@ -247,6 +253,9 @@ COMMANDS:
     ratelimit    HTTP rate limit detection and policy probe
     ipconv       IP address format converter (hex/oct/bin/int)
     tcpdump      TCP connection analyzer with TLS inspection
+    sysinfo      System and network environment info
+    httphealth   HTTP endpoint health monitor with uptime tracking
+    dnsenum      DNS subdomain enumeration via wordlist
 
 OPTIONS:
     --version, -v    Show version information
