@@ -558,3 +558,33 @@ cmd/nns/cmd_tcpdump.go                  # CLI handler
 - **Rate Limit Probe**: Send configurable burst of requests to discover rate limiting policies. Parses X-RateLimit-Limit/Remaining/Reset/Window headers, detects 429 responses with Retry-After, supports concurrent probing, custom headers, and per-request detail view.
 - **IP Converter**: Convert IPs between dotted decimal, hex dotted (0xC0.0xA8.0x01.0x01), hex integer (0xC0A80101), octal (0300.0250.0001.0001), binary, and plain integer. Supports IPv4/IPv6, reverse DNS format, and IPv6-mapped addresses. Flexible input parsing accepts any format.
 - **TCP Dump**: Analyze TCP connections with DNS resolution timing, TCP handshake timing, and optional TLS handshake inspection (version, cipher suite, ALPN, server name). Multi-port probing with summary table. Detects IPv4/IPv6 and connection state.
+
+---
+
+## 19. ✅ Added New Commands (2026-02-17)
+
+| Command | Description | Tests |
+|---------|-------------|-------|
+| `nns sysinfo` | System and network environment info — hostname, OS, CPUs, interfaces, local/public IPs | 14 |
+| `nns httphealth` | HTTP endpoint health monitor with continuous polling, uptime tracking, and latency stats | 20 |
+| `nns dnsenum` | DNS subdomain enumeration via built-in wordlist, zone transfer attempts, and reverse DNS | 16 |
+
+**Total commands:** 71
+
+**Files Created:**
+```
+internal/sysinfo/sysinfo.go              # System info library
+internal/sysinfo/sysinfo_test.go          # Tests
+internal/httphealth/httphealth.go          # HTTP health monitor library
+internal/httphealth/httphealth_test.go     # Tests
+internal/dnsenum/dnsenum.go               # DNS enumeration library
+internal/dnsenum/dnsenum_test.go           # Tests
+cmd/nns/cmd_sysinfo.go                    # CLI handler
+cmd/nns/cmd_httphealth.go                 # CLI handler
+cmd/nns/cmd_dnsenum.go                    # CLI handler
+```
+
+**New Features:**
+- **System Info**: Collect hostname, OS/arch, Go version, CPU count, all network interfaces with MAC/MTU/flags/addresses, non-loopback local IPs, and optional public IP resolution via OpenDNS. Active-only filter for interfaces.
+- **HTTP Health**: Continuous HTTP endpoint health monitoring with configurable interval, custom expected status code, parallel multi-URL checks, uptime percentage calculation, min/avg/max latency tracking, history buffer, and Ctrl+C summary display.
+- **DNS Enum**: Subdomain discovery using a 70+ entry built-in wordlist with concurrent DNS lookups, zone transfer (AXFR) attempts against authoritative nameservers, CNAME detection, custom resolver support, and formatted results with IP/CNAME columns.
