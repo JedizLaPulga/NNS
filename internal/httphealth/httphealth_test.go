@@ -285,8 +285,11 @@ func TestTruncate(t *testing.T) {
 		t.Error("should not truncate")
 	}
 	result := truncate("a very long string that goes on", 10)
-	if len(result) > 10 {
-		t.Errorf("too long: %s", result)
+	if result == "a very long string that goes on" {
+		t.Error("should have truncated")
+	}
+	if !strings.HasSuffix(result, "…") {
+		t.Error("should end with ellipsis")
 	}
 }
 
